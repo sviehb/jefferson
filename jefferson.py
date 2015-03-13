@@ -6,6 +6,7 @@ import os
 import zlib
 import binascii
 
+import rtime
 import cstruct
 
 
@@ -31,7 +32,7 @@ JFFS2_FEATURE_INCOMPAT = 0xc000
 JFFS2_FEATURE_ROCOMPAT = 0x8000
 # /* RWCOMPAT_COPY: Mount read/write, and copy the node when it's GC'd */
 JFFS2_FEATURE_RWCOMPAT_COPY = 0x4000
-#/* RWCOMPAT_DELETE: Mount read/write, and delete the node when it's GC'd */
+# /* RWCOMPAT_DELETE: Mount read/write, and delete the node when it's GC'd */
 JFFS2_FEATURE_RWCOMPAT_DELETE = 0x0000
 
 JFFS2_NODETYPE_DIRENT = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 1
@@ -45,35 +46,6 @@ JFFS2_NODETYPE_XREF = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 9
 
 def mtd_crc(data):
     return (binascii.crc32(data, -1) ^ -1) & 0xffffffff
-
-
-def rtime_decompress(data_in, destlen):
-    positions = bytearray([0] * 255)
-    cpage_out = bytearray([0] * destlen)
-    outpos = 0
-    pos = 0
-
-    while outpos < destlen:
-        value = ord(data_in[pos])
-        pos += 1
-        cpage_out[outpos] = value
-        outpos += 1
-        repeat = ord(data_in[pos])
-        pos += 1
-
-        backoffs = positions[value]
-        positions[value] = outpos
-        if repeat:
-            if backoffs + repeat >= outpos:
-                while repeat:
-                    cpage_out[outpos] = cpage_out[backoffs]
-                    outpos += 1
-                    backoffs += 1
-                    repeat -= 1
-            else:
-                cpage_out[outpos:outpos + repeat] = cpage_out[backoffs:backoffs + repeat]
-                outpos += repeat
-    return str(cpage_out)
 
 
 cstruct.typedef('uint8', 'uint8_t')
@@ -228,12 +200,12 @@ class Jffs2_raw_inode(cstruct.CStruct):
         if self.compr == JFFS2_COMPR_NONE:
             self.data = node_data
         elif self.compr == JFFS2_COMPR_ZLIB:
-            #pass
             self.data = zlib.decompress(node_data)
         elif self.compr == JFFS2_COMPR_RTIME:
-            self.data = rtime_decompress(node_data, self.dsize)
+            self.data = rtime.decompress(node_data, self.dsize)
         else:
             print 'compression not implemented', self
+            print node_data.encode('hex')[:20]
             self.data = node_data
 
         if len(self.data) != self.dsize:
