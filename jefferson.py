@@ -317,8 +317,8 @@ def scan_fs(content, endianness, verbose=False):
                         fs[fs_index][JFFS2_NODETYPE_XREF] = []
                         fs[fs_index][JFFS2_NODETYPE_SUMMARY] = []
                         dirent_dict = {}
-                    else:
-                        dirent_dict[dirent.ino] = dirent
+
+                    dirent_dict[dirent.ino] = dirent
 
                     fs[fs_index][JFFS2_NODETYPE_DIRENT].append(dirent)
                     if verbose:
@@ -389,38 +389,42 @@ def dump_fs(fs, target):
 
         target_path = os.path.join(os.getcwd(), target, path)
         for inode in dirent.inodes:
+            try:
+                if stat.S_ISDIR(inode.mode):
+                    print 'writing S_ISDIR', path
+                    if not os.path.isdir(target_path):
+                        os.makedirs(target_path)
+                elif stat.S_ISLNK(inode.mode):
+                    print 'writing S_ISLNK', path
+                    if not os.path.islink(target_path):
+                        if os.path.exists(target_path):
+                            print 'file already exists as', inode.data
+                            continue
+                        os.symlink(inode.data, target_path)
+                elif stat.S_ISREG(inode.mode):
+                    print 'writing S_ISREG', path
+                    if not os.path.isfile(target_path):
+                        if not os.path.isdir(os.path.dirname(target_path)):
+                            os.makedirs(os.path.dirname(target_path))
+                        with open(target_path, 'wb') as fd:
+                            for inode in dirent.inodes:
+                                fd.seek(inode.offset)
+                                fd.write(inode.data)
+                    os.chmod(target_path, stat.S_IMODE(inode.mode))
+                    break
+                elif stat.S_ISCHR(inode.mode):
+                    print 'skipping S_ISCHR', path
+                elif stat.S_ISBLK(inode.mode):
+                    print 'skipping S_ISBLK', path
+                elif stat.S_ISFIFO(inode.mode):
+                    print 'skipping S_ISFIFO', path
+                elif stat.S_ISSOCK(inode.mode):
+                    print 'skipping S_ISSOCK', path
+                else:
+                    print 'unhandled inode.mode: %o' % inode.mode, inode, dirent
 
-            if stat.S_ISDIR(inode.mode):
-                print 'writing S_ISDIR', path
-                if not os.path.isdir(target_path):
-                    os.mkdir(target_path)
-            elif stat.S_ISLNK(inode.mode):
-                print 'writing S_ISLNK', path
-                if not os.path.islink(target_path):
-                    if os.path.exists(target_path):
-                        print 'file already exists as', inode.data
-                        continue
-                    os.symlink(inode.data, target_path)
-
-            elif stat.S_ISREG(inode.mode):
-                print 'writing S_ISREG', path
-                if not os.path.isfile(target_path):
-                    with open(target_path, 'wb') as fd:
-                        for inode in dirent.inodes:
-                            fd.seek(inode.offset)
-                            fd.write(inode.data)
-                os.chmod(target_path, stat.S_IMODE(inode.mode))
-                break
-            elif stat.S_ISCHR(inode.mode):
-                print 'skipping S_ISCHR', path
-            elif stat.S_ISBLK(inode.mode):
-                print 'skipping S_ISBLK', path
-            elif stat.S_ISFIFO(inode.mode):
-                print 'skipping S_ISFIFO', path
-            elif stat.S_ISSOCK(inode.mode):
-                print 'skipping S_ISSOCK', path
-            else:
-                print 'unhandled inode.mode: %o' % inode.mode, inode, dirent
+            except IOError as e:
+                print "I/O error(%i): %s" % (e.errno, e.strerror), inode, dirent
 
 
 def main():
@@ -429,6 +433,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-v', '--verbose', help='increase output verbosity',
                         action="store_true")
+    parser.add_argument('-f', '--force', help='overwrite destination directory',
+                        action="store_true")
     parser.add_argument('filesystem', type=str,
                         help="path to filesystem")
     parser.add_argument('-d', '--dest', type=str, default='jffs2-root',
@@ -436,7 +442,12 @@ def main():
 
     args = parser.parse_args()
     dest_path = os.path.join(os.getcwd(), args.dest)
-    if not os.path.exists(dest_path):
+
+    if os.path.exists(dest_path):
+        if not args.force:
+            print 'Destination path already exists!'
+            return
+    else:
         os.mkdir(dest_path)
 
     content = open(args.filesystem, 'rb').read()
