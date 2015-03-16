@@ -6,6 +6,7 @@ import os
 import zlib
 import binascii
 
+import jffs2_lzma
 import rtime
 import cstruct
 
@@ -23,6 +24,8 @@ JFFS2_COMPR_COPY = 0x04
 JFFS2_COMPR_DYNRUBIN = 0x05
 JFFS2_COMPR_ZLIB = 0x06
 JFFS2_COMPR_LZO = 0x07
+JFFS2_COMPR_LZMA = 0x08
+
 # /* Compatibility flags. */
 JFFS2_COMPAT_MASK = 0xc000  # /* What do to if an unknown nodetype is found */
 JFFS2_NODE_ACCURATE = 0x2000
@@ -65,7 +68,7 @@ class Jffs2_unknown_node(cstruct.CStruct):
     """
 
     def unpack(self, data):
-        cstruct.CStruct.unpack(self, data[:self.size])  #print x
+        cstruct.CStruct.unpack(self, data[:self.size])
         comp_hrd_crc = mtd_crc(data[:self.size - 4])
 
         if comp_hrd_crc == self.hdr_crc:
@@ -143,14 +146,14 @@ class Jffs2_raw_dirent(cstruct.CStruct):
     """
 
     def unpack(self, data, node_offset):
-        cstruct.CStruct.unpack(self, data[:self.size])  #print x
+        cstruct.CStruct.unpack(self, data[:self.size])
         self.name = data[self.size:self.size + self.nsize]
         self.node_offset = node_offset
 
         if mtd_crc(data[:self.size - 8]) == self.node_crc:
             self.node_crc_match = True
         else:
-            print 'hdr_crc does not match!'
+            print 'node_crc does not match!'
             self.node_crc_match = False
 
         if mtd_crc(self.name) == self.name_crc:
@@ -194,7 +197,7 @@ class Jffs2_raw_inode(cstruct.CStruct):
     """
 
     def unpack(self, data):
-        cstruct.CStruct.unpack(self, data[:self.size])  #print x
+        cstruct.CStruct.unpack(self, data[:self.size])
 
         node_data = data[self.size:self.size + self.csize]
         if self.compr == JFFS2_COMPR_NONE:
@@ -203,6 +206,8 @@ class Jffs2_raw_inode(cstruct.CStruct):
             self.data = zlib.decompress(node_data)
         elif self.compr == JFFS2_COMPR_RTIME:
             self.data = rtime.decompress(node_data, self.dsize)
+        elif self.compr == JFFS2_COMPR_LZMA:
+            self.data = jffs2_lzma.decompress(node_data, self.dsize)
         else:
             print 'compression not implemented', self
             print node_data.encode('hex')[:20]
