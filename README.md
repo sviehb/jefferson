@@ -29,5 +29,5 @@ Features
 Usage
 ============
 ```bash
-$ jefferson filesystem.img -o outdir
+$ jefferson filesystem.img -d outdir
 ```
