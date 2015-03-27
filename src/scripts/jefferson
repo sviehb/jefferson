@@ -1,4 +1,4 @@
-#! /usr/bin/python
+#! /usr/bin/python2
 
 import struct
 import stat
@@ -6,9 +6,9 @@ import os
 import zlib
 import binascii
 
-import jffs2_lzma
-import rtime
 import cstruct
+
+from jefferson import jffs2_lzma, rtime
 
 
 def PAD(x):
@@ -234,7 +234,6 @@ NODETYPES = {
     JFFS2_NODETYPE_DIRENT: Jffs2_raw_dirent,
     JFFS2_NODETYPE_INODE: Jffs2_raw_inode,
     JFFS2_NODETYPE_CLEANMARKER: 'JFFS2_NODETYPE_CLEANMARKER',
-    JFFS2_NODETYPE_PADDING: 'JFFS2_NODETYPE_PADDING',
     JFFS2_NODETYPE_SUMMARY: Jffs2_raw_summary,
     JFFS2_NODETYPE_XATTR: Jffs2_raw_xattr,
     JFFS2_NODETYPE_XREF: Jffs2_raw_xref,

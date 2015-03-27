@@ -1,6 +1,13 @@
 # jefferson
 JFFS2 filesystem extraction tool
 
+Installation
+============
+
+```bash
+$ sudo python setup.py install
+```
+
 
 Dependencies
 ============
