@@ -3,7 +3,6 @@ JFFS2 filesystem extraction tool
 
 Installation
 ============
-
 ```bash
 $ sudo python setup.py install
 ```
@@ -11,8 +10,7 @@ $ sudo python setup.py install
 
 Dependencies
 ============
-
-- `cstuct`
+- `cstruct`
 - `pyliblzma`
 
 ```bash
