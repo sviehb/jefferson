@@ -228,6 +228,17 @@ class Jffs2_raw_inode(cstruct.CStruct):
             print 'data_crc does not match!'
             self.data_crc_match = False
 
+class Jffs2_device_node_old(cstruct.CStruct):
+    __byte_order__ = cstruct.LITTLE_ENDIAN
+    __struct__ = """
+        jint16_t old_id;
+    """
+
+class Jffs2_device_node_new(cstruct.CStruct):
+    __byte_order__ = cstruct.LITTLE_ENDIAN
+    __struct__ = """
+        jint32_t new_id;
+    """
 
 NODETYPES = {
     JFFS2_FEATURE_INCOMPAT: Jffs2_unknown_node,
@@ -242,6 +253,9 @@ NODETYPES = {
 
 
 def set_endianness(endianness):
+    Jffs2_device_node_new.__fmt__ = endianness + Jffs2_device_node_new.__fmt__[1:]
+    Jffs2_device_node_old.__fmt__ = endianness + Jffs2_device_node_old.__fmt__[1:]
+
     for node in NODETYPES.values():
         if isinstance(node, cstruct.CStructMeta):
             node.__fmt__ = endianness + node.__fmt__[1:]
@@ -256,6 +270,7 @@ def scan_fs(content, endianness, verbose=False):
 
     fs = {}
     fs[fs_index] = {}
+    fs[fs_index]["endianness"] = endianness
     fs[fs_index][JFFS2_NODETYPE_INODE] = []
     fs[fs_index][JFFS2_NODETYPE_DIRENT] = []
     fs[fs_index][JFFS2_NODETYPE_XATTR] = []
@@ -333,8 +348,25 @@ def scan_fs(content, endianness, verbose=False):
     return fs.values()
 
 
+def get_device(inode):
+    if not stat.S_ISBLK(inode.mode) and not stat.S_ISCHR(inode.mode):
+        return None
+
+    if inode.dsize == len(Jffs2_device_node_new):
+        node = Jffs2_device_node_new()
+        node.unpack(inode.data)
+        return os.makedev((node.new_id & 0xfff00) >> 8, (node.new_id & 0xff) | ((node.new_id >> 12) & 0xfff00))
+    elif inode.dsize == len(Jffs2_device_node_old):
+        node = Jffs2_device_node_old()
+        node.unpack(inode.data)
+        return os.makedev((node.old_id >> 8) & 0xff, node.old_id & 0xff)
+    return None
+
+
 def dump_fs(fs, target):
     node_dict = {}
+
+    set_endianness(fs["endianness"])
 
     for dirent in fs[JFFS2_NODETYPE_DIRENT]:
         dirent.inodes = []
@@ -389,9 +421,11 @@ def dump_fs(fs, target):
                     os.chmod(target_path, stat.S_IMODE(inode.mode))
                     break
                 elif stat.S_ISCHR(inode.mode):
-                    print 'skipping S_ISCHR', path
+                    print 'writing S_ISBLK', path
+                    os.mknod(target_path, inode.mode, get_device(inode))
                 elif stat.S_ISBLK(inode.mode):
-                    print 'skipping S_ISBLK', path
+                    print 'writing S_ISBLK', path
+                    os.mknod(target_path, inode.mode, get_device(inode))
                 elif stat.S_ISFIFO(inode.mode):
                     print 'skipping S_ISFIFO', path
                 elif stat.S_ISSOCK(inode.mode):
@@ -437,8 +471,15 @@ def main():
 
         dest_path_fs = os.path.join(dest_path, 'fs_%i' % fs_index)
         print 'dumping fs #%i to %s' % (fs_index, dest_path_fs)
-        for type, nodes in fs.iteritems():
-            print '%s count: %i' % (NODETYPES[type].__name__, len(nodes))
+        for key, value in fs.iteritems():
+            if key == "endianness":
+                if value == cstruct.BIG_ENDIAN:
+                    print 'Endianness: Big'
+                elif value == cstruct.LITTLE_ENDIAN:
+                    print 'Endianness: Small'
+                continue
+
+            print '%s count: %i' % (NODETYPES[key].__name__, len(value))
 
         if not os.path.exists(dest_path_fs):
             os.mkdir(dest_path_fs)
