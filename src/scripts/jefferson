@@ -439,6 +439,9 @@ def dump_fs(fs, target):
             except IOError as e:
                 print "I/O error(%i): %s" % (e.errno, e.strerror), inode, dirent
 
+            except OSError as e:
+                print "OS error(%i): %s" % (e.errno, e.strerror), inode, dirent
+
 
 def main():
     import argparse
