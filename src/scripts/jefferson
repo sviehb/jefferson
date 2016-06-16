@@ -304,6 +304,7 @@ def scan_fs(content, endianness, verbose=False):
                         print 'duplicate inode use detected!!!'
                         fs_index += 1
                         fs[fs_index] = {}
+                        fs[fs_index]["endianness"] = endianness
                         fs[fs_index][JFFS2_NODETYPE_INODE] = []
                         fs[fs_index][JFFS2_NODETYPE_DIRENT] = []
                         fs[fs_index][JFFS2_NODETYPE_XATTR] = []
