@@ -479,7 +479,7 @@ def main():
                 if value == cstruct.BIG_ENDIAN:
                     print 'Endianness: Big'
                 elif value == cstruct.LITTLE_ENDIAN:
-                    print 'Endianness: Small'
+                    print 'Endianness: Little'
                 continue
 
             print '%s count: %i' % (NODETYPES[key].__name__, len(value))
