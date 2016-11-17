@@ -1,4 +1,4 @@
-#! /usr/bin/python2
+#!/usr/bin/env python
 
 import struct
 import stat
@@ -153,13 +153,13 @@ class Jffs2_raw_dirent(cstruct.CStruct):
         if mtd_crc(data[:self.size - 8]) == self.node_crc:
             self.node_crc_match = True
         else:
-            print 'node_crc does not match!'
+            print('node_crc does not match!')
             self.node_crc_match = False
 
         if mtd_crc(self.name) == self.name_crc:
             self.name_crc_match = True
         else:
-            print 'data_crc does not match!'
+            print('data_crc does not match!')
             self.name_crc_match = False
 
     def __str__(self):
@@ -211,23 +211,23 @@ class Jffs2_raw_inode(cstruct.CStruct):
         elif self.compr == JFFS2_COMPR_LZMA:
             self.data = jffs2_lzma.decompress(node_data, self.dsize)
         else:
-            print 'compression not implemented', self
-            print node_data.encode('hex')[:20]
+            print('compression not implemented', self)
+            print(node_data.encode('hex')[:20])
             self.data = node_data
 
         if len(self.data) != self.dsize:
-            print 'data length mismatch!'
+            print('data length mismatch!')
 
         if mtd_crc(data[:self.size - 8]) == self.node_crc:
             self.node_crc_match = True
         else:
-            print 'hdr_crc does not match!'
+            print('hdr_crc does not match!')
             self.node_crc_match = False
 
         if mtd_crc(node_data) == self.data_crc:
             self.data_crc_match = True
         else:
-            print 'data_crc does not match!'
+            print('data_crc does not match!')
             self.data_crc_match = False
 
 class Jffs2_device_node_old(cstruct.CStruct):
@@ -258,7 +258,7 @@ def set_endianness(endianness):
     Jffs2_device_node_new.__fmt__ = endianness + Jffs2_device_node_new.__fmt__[1:]
     Jffs2_device_node_old.__fmt__ = endianness + Jffs2_device_node_old.__fmt__[1:]
 
-    for node in NODETYPES.values():
+    for node in list(NODETYPES.values()):
         if isinstance(node, cstruct.CStructMeta):
             node.__fmt__ = endianness + node.__fmt__[1:]
 
@@ -301,7 +301,7 @@ def scan_fs(content, endianness, verbose=False):
                     dirent = Jffs2_raw_dirent()
                     dirent.unpack(content[0 + offset:], offset)
                     if dirent.ino in dirent_dict:
-                        print 'duplicate inode use detected!!!'
+                        print('duplicate inode use detected!!!')
                         fs_index += 1
                         fs[fs_index] = {}
                         fs[fs_index]["endianness"] = endianness
@@ -316,39 +316,39 @@ def scan_fs(content, endianness, verbose=False):
 
                     fs[fs_index][JFFS2_NODETYPE_DIRENT].append(dirent)
                     if verbose:
-                        print '0x%08X:' % (offset), dirent
+                        print('0x%08X:' % (offset), dirent)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_INODE:
                     inode = Jffs2_raw_inode()
                     inode.unpack(content[0 + offset:])
                     fs[fs_index][JFFS2_NODETYPE_INODE].append(inode)
                     if verbose:
-                        print '0x%08X:' % (offset), inode
+                        print('0x%08X:' % (offset), inode)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_XREF:
                     xref = Jffs2_raw_xref()
                     xref.unpack(content[offset:offset + xref.size])
                     fs[fs_index][JFFS2_NODETYPE_XREF].append(xref)
                     if verbose:
-                        print '0x%08X:' % (offset), xref
+                        print('0x%08X:' % (offset), xref)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_XATTR:
                     xattr = Jffs2_raw_xattr()
                     xattr.unpack(content[offset:offset + xattr.size])
                     fs[fs_index][JFFS2_NODETYPE_XREF].append(xattr)
                     if verbose:
-                        print '0x%08X:' % (offset), xattr
+                        print('0x%08X:' % (offset), xattr)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_SUMMARY:
                     summary = Jffs2_raw_summary()
                     summary.unpack(content[offset:offset + summary.size])
                     summaries.append(summary)
                     fs[fs_index][JFFS2_NODETYPE_SUMMARY].append(summary)
                     if verbose:
-                        print '0x%08X:' % (offset), summary
+                        print('0x%08X:' % (offset), summary)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_CLEANMARKER:
                     pass
                 elif unknown_node.nodetype == JFFS2_NODETYPE_PADDING:
                     pass
                 else:
-                    print 'Unhandled node type', unknown_node.nodetype, unknown_node
-    return fs.values()
+                    print('Unhandled node type', unknown_node.nodetype, unknown_node)
+    return list(fs.values())
 
 
 def get_device(inode):
@@ -377,7 +377,7 @@ def dump_fs(fs, target):
             if inode.ino == dirent.ino:
                 dirent.inodes.append(inode)
         if dirent.ino in node_dict:
-            print 'duplicate dirent.ino use detected!!!', dirent
+            print('duplicate dirent.ino use detected!!!', dirent)
         node_dict[dirent.ino] = dirent
 
     for dirent in fs[JFFS2_NODETYPE_DIRENT]:
@@ -396,24 +396,24 @@ def dump_fs(fs, target):
         for pnode in pnodes:
             node_names.append(pnode.name)
         node_names.append(dirent.name)
-        path = '/'.join(node_names)
+        path = '/'.join(str(node_names))
 
         target_path = os.path.join(os.getcwd(), target, path)
         for inode in dirent.inodes:
             try:
                 if stat.S_ISDIR(inode.mode):
-                    print 'writing S_ISDIR', path
+                    print('writing S_ISDIR', path)
                     if not os.path.isdir(target_path):
                         os.makedirs(target_path)
                 elif stat.S_ISLNK(inode.mode):
-                    print 'writing S_ISLNK', path
+                    print('writing S_ISLNK', path)
                     if not os.path.islink(target_path):
                         if os.path.exists(target_path):
-                            print 'file already exists as', inode.data
+                            print('file already exists as', inode.data)
                             continue
                         os.symlink(inode.data, target_path)
                 elif stat.S_ISREG(inode.mode):
-                    print 'writing S_ISREG', path
+                    print('writing S_ISREG', path)
                     if not os.path.isfile(target_path):
                         if not os.path.isdir(os.path.dirname(target_path)):
                             os.makedirs(os.path.dirname(target_path))
@@ -423,24 +423,24 @@ def dump_fs(fs, target):
                                 fd.write(inode.data)
                     os.chmod(target_path, stat.S_IMODE(inode.mode))
                     break
-                elif stat.S_ISCHR(inode.mode):
-                    print 'writing S_ISBLK', path
+                elif stat.S_ISCHR(inode.mode) and hasattr(os, 'mknod'): # mknod Availability: Unix.
+                    print('writing S_ISCHR', path)
                     os.mknod(target_path, inode.mode, get_device(inode))
-                elif stat.S_ISBLK(inode.mode):
-                    print 'writing S_ISBLK', path
+                elif stat.S_ISBLK(inode.mode) and hasattr(os, 'mknod'):
+                    print('writing S_ISBLK', path)
                     os.mknod(target_path, inode.mode, get_device(inode))
                 elif stat.S_ISFIFO(inode.mode):
-                    print 'skipping S_ISFIFO', path
+                    print('skipping S_ISFIFO', path)
                 elif stat.S_ISSOCK(inode.mode):
-                    print 'skipping S_ISSOCK', path
+                    print('skipping S_ISSOCK', path)
                 else:
-                    print 'unhandled inode.mode: %o' % inode.mode, inode, dirent
+                    print('unhandled inode.mode: %o' % inode.mode, inode, dirent)
 
             except IOError as e:
-                print "I/O error(%i): %s" % (e.errno, e.strerror), inode, dirent
+                print("I/O error(%s): %s" % (e.errno, e.strerror), inode, dirent) # %i yields TypeError: %i format: a number is required, not NoneType
 
             except OSError as e:
-                print "OS error(%i): %s" % (e.errno, e.strerror), inode, dirent
+                print("OS error(%i): %s" % (e.errno, e.strerror), inode, dirent)
 
 
 def main():
@@ -461,7 +461,7 @@ def main():
 
     if os.path.exists(dest_path):
         if not args.force:
-            print 'Destination path already exists!'
+            print('Destination path already exists!')
             return
     else:
         os.mkdir(dest_path)
@@ -476,22 +476,22 @@ def main():
             continue
 
         dest_path_fs = os.path.join(dest_path, 'fs_%i' % fs_index)
-        print 'dumping fs #%i to %s' % (fs_index, dest_path_fs)
-        for key, value in fs.iteritems():
+        print('dumping fs #%i to %s' % (fs_index, dest_path_fs))
+        for key, value in fs.items():
             if key == "endianness":
                 if value == cstruct.BIG_ENDIAN:
-                    print 'Endianness: Big'
+                    print('Endianness: Big')
                 elif value == cstruct.LITTLE_ENDIAN:
-                    print 'Endianness: Little'
+                    print('Endianness: Little')
                 continue
 
-            print '%s count: %i' % (NODETYPES[key].__name__, len(value))
+            print('%s count: %i' % (NODETYPES[key].__name__, len(value)))
 
         if not os.path.exists(dest_path_fs):
             os.mkdir(dest_path_fs)
 
         dump_fs(fs, dest_path_fs)
-        print '-' * 10
+        print('-' * 10)
         fs_index += 1
 
 if __name__ == '__main__':
