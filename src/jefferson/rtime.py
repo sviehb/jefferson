@@ -3,12 +3,13 @@ def decompress(data_in, destlen):
     cpage_out = bytearray([0] * destlen)
     outpos = 0
     pos = 0
+    type_in = type(data_in)
     while outpos < destlen:
-        value = ord(data_in[pos])
+        value = ord(data_in[pos]) if type_in == str else data_in[pos]
         pos += 1
         cpage_out[outpos] = value
         outpos += 1
-        repeat = ord(data_in[pos])
+        repeat = ord(data_in[pos]) if type_in == str else data_in[pos]
         pos += 1
 
         backoffs = positions[value]
