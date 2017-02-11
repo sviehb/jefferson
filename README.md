@@ -13,9 +13,10 @@ Dependencies
 - `cstruct`
 - `pyliblzma`
 
+Unix
 ```bash
 $ sudo pip install cstruct
-$ sudo apt-get install python-lzma
+$ sudo pip install pyliblzma
 ```
 
 Features
