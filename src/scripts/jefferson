@@ -5,6 +5,7 @@ import stat
 import os
 import zlib
 import binascii
+import lzo
 
 import cstruct
 
@@ -210,6 +211,8 @@ class Jffs2_raw_inode(cstruct.CStruct):
             self.data = rtime.decompress(node_data, self.dsize)
         elif self.compr == JFFS2_COMPR_LZMA:
             self.data = jffs2_lzma.decompress(node_data, self.dsize)
+        elif self.compr == JFFS2_COMPR_LZO:
+            self.data = lzo.decompress(node_data, False, self.dsize)
         else:
             print 'compression not implemented', self
             print node_data.encode('hex')[:20]
