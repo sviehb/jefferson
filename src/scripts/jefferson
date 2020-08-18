@@ -204,7 +204,7 @@ class Jffs2_raw_inode(cstruct.CStruct):
         if self.compr == JFFS2_COMPR_NONE:
             self.data = node_data
         elif self.compr == JFFS2_COMPR_ZERO:
-            self.data = "\x00" * self.dsize
+            self.data = b'\x00' * self.dsize
         elif self.compr == JFFS2_COMPR_ZLIB:
             self.data = zlib.decompress(node_data)
         elif self.compr == JFFS2_COMPR_RTIME:
