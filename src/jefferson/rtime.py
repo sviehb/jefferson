@@ -21,6 +21,8 @@ def decompress(data_in, destlen):
                     backoffs += 1
                     repeat -= 1
             else:
-                cpage_out[outpos:outpos + repeat] = cpage_out[backoffs:backoffs + repeat]
+                cpage_out[outpos : outpos + repeat] = cpage_out[
+                    backoffs : backoffs + repeat
+                ]
                 outpos += repeat
     return str(cpage_out)
