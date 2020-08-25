@@ -1,6 +1,6 @@
 import struct
 
-import lzma
+import pylzma
 
 LZMA_BEST_LC = 0
 LZMA_BEST_LP = 0
@@ -17,5 +17,5 @@ DICT_SIZE = 0x2000
 def decompress(data, outlen):
     lzma_header = struct.pack('<BIQ', PROPERTIES, DICT_SIZE, outlen)
     lzma_data = lzma_header + data
-    decompressed = lzma.decompress(lzma_data)
+    decompressed = pylzma.decompress(lzma_data)
     return decompressed

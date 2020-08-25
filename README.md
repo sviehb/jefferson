@@ -11,11 +11,10 @@ $ sudo python setup.py install
 Dependencies
 ============
 - `cstruct`
-- `pyliblzma`
+- `pylzma`
 
 ```bash
-$ sudo pip install cstruct
-$ sudo apt-get install python-lzma
+$ sudo pip install cstruct pylzma
 ```
 
 Features

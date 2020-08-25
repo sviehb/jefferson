@@ -13,7 +13,7 @@ setup(
     url='https://github.com/sviehb/jefferson',
     license='MIT',
 
-    requires=['cstruct'],
+    requires=['cstruct', 'pylzma'],
     packages=['jefferson'],
     package_dir={'jefferson': 'src/jefferson'},
     scripts=['src/scripts/jefferson'],
