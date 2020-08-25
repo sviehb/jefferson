@@ -4,7 +4,7 @@ JFFS2 filesystem extraction tool
 Installation
 ============
 ```bash
-$ sudo python setup.py install
+$ sudo python3 setup.py install
 ```
 
 
@@ -14,7 +14,7 @@ Dependencies
 - `pylzma`
 
 ```bash
-$ sudo pip install cstruct pylzma
+$ sudo pip3 install -r requirements.txt
 ```
 
 Features
