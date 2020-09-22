@@ -12,7 +12,7 @@ setup(
     author="Stefan Viehböck",
     url="https://github.com/sviehb/jefferson",
     license="MIT",
-    requires=['cstruct', 'pylzma'],
+    requires=['cstruct'],
     packages=["jefferson"],
     package_dir={"jefferson": "src/jefferson"},
     scripts=["src/scripts/jefferson"],

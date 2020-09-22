@@ -11,7 +11,6 @@ $ sudo python3 setup.py install
 Dependencies
 ============
 - `cstruct`
-- `pylzma`
 
 ```bash
 $ sudo pip3 install -r requirements.txt
