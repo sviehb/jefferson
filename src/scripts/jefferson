@@ -213,7 +213,7 @@ class Jffs2_raw_inode(cstruct.CStruct):
             self.data = jffs2_lzma.decompress(node_data, self.dsize)
         else:
             print("compression not implemented", self)
-            print(node_data.encode("hex")[:20])
+            print(node_data.hex()[:20])
             self.data = node_data
 
         if len(self.data) != self.dsize:
