@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
 import argparse
+import contextlib
+import mmap
 import struct
 import stat
 import os
@@ -478,11 +480,16 @@ def main():
     else:
         os.mkdir(dest_path)
 
-    with open(args.filesystem, "rb") as filesystem:
-        content = filesystem.read()
+    with contextlib.ExitStack() as context_stack:
+        filesystem = context_stack.enter_context(open(args.filesystem, "rb"))
+        filesystem_len = os.fstat(filesystem.fileno()).st_size
+        if 0 == filesystem_len:  # Cannot create a 0-byte mapping
+            return
+        content = context_stack.enter_context(mmap.mmap(filesystem.fileno(), filesystem_len,
+                                                        access=mmap.ACCESS_READ))
 
-    fs_list = list(scan_fs(content, cstruct.BIG_ENDIAN, verbose=args.verbose))
-    fs_list += list(scan_fs(content, cstruct.LITTLE_ENDIAN, verbose=args.verbose))
+        fs_list = list(scan_fs(content, cstruct.BIG_ENDIAN, verbose=args.verbose))
+        fs_list += list(scan_fs(content, cstruct.LITTLE_ENDIAN, verbose=args.verbose))
 
     fs_index = 1
     for fs in fs_list:
