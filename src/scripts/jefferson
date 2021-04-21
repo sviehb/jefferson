@@ -151,6 +151,8 @@ class Jffs2_raw_dirent(cstruct.CStruct):
     def unpack(self, data, node_offset):
         cstruct.CStruct.unpack(self, data[: self.size])
         self.name = data[self.size : self.size + self.nsize]
+        if isinstance(self.name, memoryview):
+            self.name = self.name.tobytes()
         self.node_offset = node_offset
 
         if mtd_crc(data[: self.size - 8]) == self.node_crc:
@@ -203,6 +205,8 @@ class Jffs2_raw_inode(cstruct.CStruct):
         cstruct.CStruct.unpack(self, data[: self.size])
 
         node_data = data[self.size : self.size + self.csize]
+        if isinstance(node_data, memoryview):
+            node_data = node_data.tobytes()
         if self.compr == JFFS2_COMPR_NONE:
             self.data = node_data
         elif self.compr == JFFS2_COMPR_ZERO:
@@ -275,6 +279,7 @@ def scan_fs(content, endianness, verbose=False):
     pos = 0
     jffs2_magic_bitmask_str = struct.pack(endianness + "H", JFFS2_MAGIC_BITMASK)
     fs_index = 0
+    content_mv = memoryview(content)
 
     fs = {}
     fs[fs_index] = {}
@@ -296,7 +301,7 @@ def scan_fs(content, endianness, verbose=False):
             pos = find_result
 
         unknown_node = Jffs2_unknown_node()
-        unknown_node.unpack(content[pos : pos + unknown_node.size])
+        unknown_node.unpack(content_mv[pos : pos + unknown_node.size])
         if not unknown_node.hdr_crc_match:
             pos += 1
             continue
@@ -307,7 +312,7 @@ def scan_fs(content, endianness, verbose=False):
             if unknown_node.nodetype in NODETYPES:
                 if unknown_node.nodetype == JFFS2_NODETYPE_DIRENT:
                     dirent = Jffs2_raw_dirent()
-                    dirent.unpack(content[0 + offset :], offset)
+                    dirent.unpack(content_mv[0 + offset :], offset)
                     if dirent.ino in dirent_dict:
                         print("duplicate inode use detected!!!")
                         fs_index += 1
@@ -327,25 +332,25 @@ def scan_fs(content, endianness, verbose=False):
                         print("0x%08X:" % (offset), dirent)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_INODE:
                     inode = Jffs2_raw_inode()
-                    inode.unpack(content[0 + offset :])
+                    inode.unpack(content_mv[0 + offset :])
                     fs[fs_index][JFFS2_NODETYPE_INODE].append(inode)
                     if verbose:
                         print("0x%08X:" % (offset), inode)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_XREF:
                     xref = Jffs2_raw_xref()
-                    xref.unpack(content[offset : offset + xref.size])
+                    xref.unpack(content_mv[offset : offset + xref.size])
                     fs[fs_index][JFFS2_NODETYPE_XREF].append(xref)
                     if verbose:
                         print("0x%08X:" % (offset), xref)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_XATTR:
                     xattr = Jffs2_raw_xattr()
-                    xattr.unpack(content[offset : offset + xattr.size])
+                    xattr.unpack(content_mv[offset : offset + xattr.size])
                     fs[fs_index][JFFS2_NODETYPE_XREF].append(xattr)
                     if verbose:
                         print("0x%08X:" % (offset), xattr)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_SUMMARY:
                     summary = Jffs2_raw_summary()
-                    summary.unpack(content[offset : offset + summary.size])
+                    summary.unpack(content_mv[offset : offset + summary.size])
                     summaries.append(summary)
                     fs[fs_index][JFFS2_NODETYPE_SUMMARY].append(summary)
                     if verbose:
