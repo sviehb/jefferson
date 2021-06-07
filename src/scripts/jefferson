@@ -435,10 +435,16 @@ def dump_fs(fs, target):
                     break
                 elif stat.S_ISCHR(inode.mode):
                     print("writing S_ISBLK", path)
-                    os.mknod(target_path, inode.mode, get_device(inode))
+                    if os.name == "nt":
+                        open(target_path, "a").close()
+                    else:
+                        os.mknod(target_path, inode.mode, get_device(inode))
                 elif stat.S_ISBLK(inode.mode):
                     print("writing S_ISBLK", path)
-                    os.mknod(target_path, inode.mode, get_device(inode))
+                    if os.name == "nt":
+                        open(target_path, "a").close()
+                    else:
+                        os.mknod(target_path, inode.mode, get_device(inode))
                 elif stat.S_ISFIFO(inode.mode):
                     print("skipping S_ISFIFO", path)
                 elif stat.S_ISSOCK(inode.mode):
