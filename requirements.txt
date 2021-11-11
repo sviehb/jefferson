@@ -1,1 +1,1 @@
-cstruct
+cstruct==1.8
