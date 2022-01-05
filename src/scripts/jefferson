@@ -328,7 +328,6 @@ def set_endianness(endianness):
 
 
 def scan_fs(content, endianness, verbose=False):
-    set_endianness(endianness)
     summaries = []
     pos = 0
     jffs2_old_magic_bitmask_str = struct.pack(endianness + "H", JFFS2_OLD_MAGIC_BITMASK)
@@ -448,8 +447,6 @@ def get_device(inode):
 def dump_fs(fs, target):
     node_dict = {}
 
-    set_endianness(fs["endianness"])
-
     for dirent in fs[JFFS2_NODETYPE_DIRENT]:
         dirent.inodes = []
         for inode in fs[JFFS2_NODETYPE_INODE]:
@@ -550,8 +547,14 @@ def main():
     with open(args.filesystem, "rb") as filesystem:
         content = filesystem.read()
 
-    fs_list = list(scan_fs(content, cstruct.BIG_ENDIAN, verbose=args.verbose))
-    fs_list += list(scan_fs(content, cstruct.LITTLE_ENDIAN, verbose=args.verbose))
+    magic = struct.unpack("<H", content[0:2])[0]
+    if magic in [JFFS2_OLD_MAGIC_BITMASK, JFFS2_MAGIC_BITMASK]:
+        endianness = cstruct.LITTLE_ENDIAN
+    else:
+        endianness = cstruct.BIG_ENDIAN
+
+    set_endianness(endianness)
+    fs_list = list(scan_fs(content, endianness, verbose=args.verbose))
 
     fs_index = 1
     for fs in fs_list:
