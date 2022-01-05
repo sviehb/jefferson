@@ -60,12 +60,14 @@ cstruct.typedef("uint32", "jmode_t")
 
 class Jffs2_unknown_node(cstruct.CStruct):
     __byte_order__ = cstruct.LITTLE_ENDIAN
-    __struct__ = """
-        /* All start like this */
-        jint16_t magic;
-        jint16_t nodetype;
-        jint32_t totlen; /* So we can skip over nodes we don't grok */
-        jint32_t hdr_crc;
+    __def__ = """
+        struct {
+            /* All start like this */
+            jint16_t magic;
+            jint16_t nodetype;
+            jint32_t totlen; /* So we can skip over nodes we don't grok */
+            jint32_t hdr_crc;
+        }
     """
 
     def unpack(self, data):
@@ -81,69 +83,77 @@ class Jffs2_unknown_node(cstruct.CStruct):
 
 class Jffs2_raw_xattr(cstruct.CStruct):
     __byte_order__ = cstruct.LITTLE_ENDIAN
-    __struct__ = """
-        jint16_t magic;
-        jint16_t nodetype;      /* = JFFS2_NODETYPE_XATTR */
-        jint32_t totlen;
-        jint32_t hdr_crc;
-        jint32_t xid;           /* XATTR identifier number */
-        jint32_t version;
-        uint8_t xprefix;
-        uint8_t name_len;
-        jint16_t value_len;
-        jint32_t data_crc;
-        jint32_t node_crc;
-        uint8_t data[0];
+    __def__ = """
+        struct {
+            jint16_t magic;
+            jint16_t nodetype;      /* = JFFS2_NODETYPE_XATTR */
+            jint32_t totlen;
+            jint32_t hdr_crc;
+            jint32_t xid;           /* XATTR identifier number */
+            jint32_t version;
+            uint8_t xprefix;
+            uint8_t name_len;
+            jint16_t value_len;
+            jint32_t data_crc;
+            jint32_t node_crc;
+            uint8_t data[0];
+        }
     """
 
 
 class Jffs2_raw_summary(cstruct.CStruct):
     __byte_order__ = cstruct.LITTLE_ENDIAN
-    __struct__ = """
-        jint16_t magic;
-        jint16_t nodetype;      /* = JFFS2_NODETYPE_SUMMARY */
-        jint32_t totlen;
-        jint32_t hdr_crc;
-        jint32_t sum_num;       /* number of sum entries*/
-        jint32_t cln_mkr;       /* clean marker size, 0 = no cleanmarker */
-        jint32_t padded;        /* sum of the size of padding nodes */
-        jint32_t sum_crc;       /* summary information crc */
-        jint32_t node_crc;      /* node crc */
-        jint32_t sum[0];        /* inode summary info */
+    __def__ = """
+        struct {
+            jint16_t magic;
+            jint16_t nodetype;      /* = JFFS2_NODETYPE_SUMMARY */
+            jint32_t totlen;
+            jint32_t hdr_crc;
+            jint32_t sum_num;       /* number of sum entries*/
+            jint32_t cln_mkr;       /* clean marker size, 0 = no cleanmarker */
+            jint32_t padded;        /* sum of the size of padding nodes */
+            jint32_t sum_crc;       /* summary information crc */
+            jint32_t node_crc;      /* node crc */
+            jint32_t sum[0];        /* inode summary info */
+        }
     """
 
 
 class Jffs2_raw_xref(cstruct.CStruct):
     __byte_order__ = cstruct.LITTLE_ENDIAN
-    __struct__ = """
-        jint16_t magic;
-        jint16_t nodetype;      /* = JFFS2_NODETYPE_XREF */
-        jint32_t totlen;
-        jint32_t hdr_crc;
-        jint32_t ino;           /* inode number */
-        jint32_t xid;           /* XATTR identifier number */
-        jint32_t xseqno;        /* xref sequencial number */
-        jint32_t node_crc;
+    __def__ = """
+        struct {
+            jint16_t magic;
+            jint16_t nodetype;      /* = JFFS2_NODETYPE_XREF */
+            jint32_t totlen;
+            jint32_t hdr_crc;
+            jint32_t ino;           /* inode number */
+            jint32_t xid;           /* XATTR identifier number */
+            jint32_t xseqno;        /* xref sequencial number */
+            jint32_t node_crc;
+        }
     """
 
 
 class Jffs2_raw_dirent(cstruct.CStruct):
     __byte_order__ = cstruct.LITTLE_ENDIAN
-    __struct__ = """
-        jint16_t magic;
-        jint16_t nodetype;      /* == JFFS2_NODETYPE_DIRENT */
-        jint32_t totlen;
-        jint32_t hdr_crc;
-        jint32_t pino;
-        jint32_t version;
-        jint32_t ino; /* == zero for unlink */
-        jint32_t mctime;
-        uint8_t nsize;
-        uint8_t type;
-        uint8_t unused[2];
-        jint32_t node_crc;
-        jint32_t name_crc;
-    /* uint8_t data[0]; -> name */
+    __def__ = """
+        struct {
+            jint16_t magic;
+            jint16_t nodetype;      /* == JFFS2_NODETYPE_DIRENT */
+            jint32_t totlen;
+            jint32_t hdr_crc;
+            jint32_t pino;
+            jint32_t version;
+            jint32_t ino; /* == zero for unlink */
+            jint32_t mctime;
+            uint8_t nsize;
+            uint8_t type;
+            uint8_t unused[2];
+            jint32_t node_crc;
+            jint32_t name_crc;
+        /* uint8_t data[0]; -> name */
+        }
     """
 
     def unpack(self, data, node_offset):
@@ -172,29 +182,31 @@ class Jffs2_raw_dirent(cstruct.CStruct):
 
 class Jffs2_raw_inode(cstruct.CStruct):
     __byte_order__ = cstruct.LITTLE_ENDIAN
-    __struct__ = """
-        jint16_t magic;      /* A constant magic number.  */
-        jint16_t nodetype;   /* == JFFS2_NODETYPE_INODE */
-        jint32_t totlen;     /* Total length of this node (inc data, etc.) */
-        jint32_t hdr_crc;
-        jint32_t ino;        /* Inode number.  */
-        jint32_t version;    /* Version number.  */
-        jmode_t mode;       /* The file's type or mode.  */
-        jint16_t uid;        /* The file's owner.  */
-        jint16_t gid;        /* The file's group.  */
-        jint32_t isize;      /* Total resultant size of this inode (used for truncations)  */
-        jint32_t atime;      /* Last access time.  */
-        jint32_t mtime;      /* Last modification time.  */
-        jint32_t ctime;      /* Change time.  */
-        jint32_t offset;     /* Where to begin to write.  */
-        jint32_t csize;      /* (Compressed) data size */
-        jint32_t dsize;      /* Size of the node's data. (after decompression) */
-        uint8_t compr;       /* Compression algorithm used */
-        uint8_t usercompr;   /* Compression algorithm requested by the user */
-        jint16_t flags;      /* See JFFS2_INO_FLAG_* */
-        jint32_t data_crc;   /* CRC for the (compressed) data.  */
-        jint32_t node_crc;   /* CRC for the raw inode (excluding data)  */
-        /* uint8_t data[0]; */
+    __def__ = """
+        struct {
+            jint16_t magic;      /* A constant magic number.  */
+            jint16_t nodetype;   /* == JFFS2_NODETYPE_INODE */
+            jint32_t totlen;     /* Total length of this node (inc data, etc.) */
+            jint32_t hdr_crc;
+            jint32_t ino;        /* Inode number.  */
+            jint32_t version;    /* Version number.  */
+            jmode_t mode;       /* The file's type or mode.  */
+            jint16_t uid;        /* The file's owner.  */
+            jint16_t gid;        /* The file's group.  */
+            jint32_t isize;      /* Total resultant size of this inode (used for truncations)  */
+            jint32_t atime;      /* Last access time.  */
+            jint32_t mtime;      /* Last modification time.  */
+            jint32_t ctime;      /* Change time.  */
+            jint32_t offset;     /* Where to begin to write.  */
+            jint32_t csize;      /* (Compressed) data size */
+            jint32_t dsize;      /* Size of the node's data. (after decompression) */
+            uint8_t compr;       /* Compression algorithm used */
+            uint8_t usercompr;   /* Compression algorithm requested by the user */
+            jint16_t flags;      /* See JFFS2_INO_FLAG_* */
+            jint32_t data_crc;   /* CRC for the (compressed) data.  */
+            jint32_t node_crc;   /* CRC for the raw inode (excluding data)  */
+            /* uint8_t data[0]; */
+        }
     """
 
     def unpack(self, data):
@@ -204,7 +216,7 @@ class Jffs2_raw_inode(cstruct.CStruct):
         if self.compr == JFFS2_COMPR_NONE:
             self.data = node_data
         elif self.compr == JFFS2_COMPR_ZERO:
-            self.data = b'\x00' * self.dsize
+            self.data = b"\x00" * self.dsize
         elif self.compr == JFFS2_COMPR_ZLIB:
             self.data = zlib.decompress(node_data)
         elif self.compr == JFFS2_COMPR_RTIME:
@@ -234,15 +246,19 @@ class Jffs2_raw_inode(cstruct.CStruct):
 
 class Jffs2_device_node_old(cstruct.CStruct):
     __byte_order__ = cstruct.LITTLE_ENDIAN
-    __struct__ = """
-        jint16_t old_id;
+    __def__ = """
+        struct {
+            jint16_t old_id;
+        }
     """
 
 
 class Jffs2_device_node_new(cstruct.CStruct):
     __byte_order__ = cstruct.LITTLE_ENDIAN
-    __struct__ = """
-        jint32_t new_id;
+    __def__ = """
+        struct {
+            jint32_t new_id;
+        }
     """
 
 
@@ -259,12 +275,55 @@ NODETYPES = {
 
 
 def set_endianness(endianness):
-    Jffs2_device_node_new.__fmt__ = endianness + Jffs2_device_node_new.__fmt__[1:]
-    Jffs2_device_node_old.__fmt__ = endianness + Jffs2_device_node_old.__fmt__[1:]
+    global Jffs2_device_node_new, Jffs2_device_node_old, Jffs2_unknown_node, Jffs2_raw_dirent, Jffs2_raw_inode, Jffs2_raw_summary, Jffs2_raw_xattr, Jffs2_raw_xref
 
-    for node in NODETYPES.values():
-        if isinstance(node, cstruct.CStructMeta):
-            node.__fmt__ = endianness + node.__fmt__[1:]
+    Jffs2_device_node_new = Jffs2_device_node_new.parse(
+        Jffs2_device_node_new.__def__,
+        __name__=Jffs2_device_node_new.__name__,
+        __byte_order__=endianness,
+    )
+
+    Jffs2_device_node_old = Jffs2_device_node_old.parse(
+        Jffs2_device_node_old.__def__,
+        __name__=Jffs2_device_node_old.__name__,
+        __byte_order__=endianness,
+    )
+
+    Jffs2_unknown_node = Jffs2_unknown_node.parse(
+        Jffs2_unknown_node.__def__,
+        __name__=Jffs2_unknown_node.__name__,
+        __byte_order__=endianness,
+    )
+
+    Jffs2_raw_dirent = Jffs2_raw_dirent.parse(
+        Jffs2_raw_dirent.__def__,
+        __name__=Jffs2_raw_dirent.__name__,
+        __byte_order__=endianness,
+    )
+
+    Jffs2_raw_inode = Jffs2_raw_inode.parse(
+        Jffs2_raw_inode.__def__,
+        __name__=Jffs2_raw_inode.__name__,
+        __byte_order__=endianness,
+    )
+
+    Jffs2_raw_summary = Jffs2_raw_summary.parse(
+        Jffs2_raw_summary.__def__,
+        __name__=Jffs2_raw_summary.__name__,
+        __byte_order__=endianness,
+    )
+
+    Jffs2_raw_xattr = Jffs2_raw_xattr.parse(
+        Jffs2_raw_xattr.__def__,
+        __name__=Jffs2_raw_xattr.__name__,
+        __byte_order__=endianness,
+    )
+
+    Jffs2_raw_xref = Jffs2_raw_xref.parse(
+        Jffs2_raw_xref.__def__,
+        __name__=Jffs2_raw_xref.__name__,
+        __byte_order__=endianness,
+    )
 
 
 def scan_fs(content, endianness, verbose=False):
