@@ -16,6 +16,7 @@ def PAD(x):
     return ((x) + 3) & ~3
 
 
+JFFS2_OLD_MAGIC_BITMASK = 0x1984
 JFFS2_MAGIC_BITMASK = 0x1985
 JFFS2_COMPR_NONE = 0x00
 JFFS2_COMPR_ZERO = 0x01
@@ -330,6 +331,7 @@ def scan_fs(content, endianness, verbose=False):
     set_endianness(endianness)
     summaries = []
     pos = 0
+    jffs2_old_magic_bitmask_str = struct.pack(endianness + "H", JFFS2_OLD_MAGIC_BITMASK)
     jffs2_magic_bitmask_str = struct.pack(endianness + "H", JFFS2_MAGIC_BITMASK)
     fs_index = 0
 
@@ -347,10 +349,15 @@ def scan_fs(content, endianness, verbose=False):
         find_result = content.find(
             jffs2_magic_bitmask_str, pos, len(content) - Jffs2_unknown_node.size
         )
-        if find_result == -1:
+        find_result_old = content.find(
+            jffs2_old_magic_bitmask_str, pos, len(content) - Jffs2_unknown_node.size
+        )
+        if find_result == -1 and find_result_old == -1:
             break
-        else:
+        if find_result != -1:
             pos = find_result
+        else:
+            pos = find_result_old
 
         unknown_node = Jffs2_unknown_node()
         unknown_node.unpack(content[pos : pos + unknown_node.size])
@@ -360,7 +367,10 @@ def scan_fs(content, endianness, verbose=False):
         offset = pos
         pos += PAD(unknown_node.totlen)
 
-        if unknown_node.magic == JFFS2_MAGIC_BITMASK:
+        if unknown_node.magic in [
+             JFFS2_MAGIC_BITMASK,
+             JFFS2_OLD_MAGIC_BITMASK,
+        ]:
             if unknown_node.nodetype in NODETYPES:
                 if unknown_node.nodetype == JFFS2_NODETYPE_DIRENT:
                     dirent = Jffs2_raw_dirent()
