@@ -6,7 +6,6 @@ import stat
 import os
 import zlib
 import binascii
-
 import cstruct
 
 from jefferson import jffs2_lzma, rtime
@@ -52,6 +51,12 @@ JFFS2_NODETYPE_XREF = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 9
 def mtd_crc(data):
     return (binascii.crc32(data, -1) ^ -1) & 0xFFFFFFFF
 
+def is_safe_path(basedir, path, follow_symlinks=True):
+    if follow_symlinks:
+        matchpath = os.path.realpath(path)
+    else:
+        matchpath = os.path.abspath(path)
+    return basedir == os.path.commonpath((basedir, matchpath))
 
 cstruct.typedef("uint8", "uint8_t")
 cstruct.typedef("uint16", "jint16_t")
@@ -474,7 +479,12 @@ def dump_fs(fs, target):
         node_names.append(dirent.name.decode())
         path = "/".join(node_names)
 
-        target_path = os.path.join(os.getcwd(), target, path)
+        target_path = os.path.realpath(os.path.join(os.getcwd(), target, path))
+
+        if not is_safe_path(target, target_path):
+            print(f"Path traversal attempt to {target_path}, discarding.")
+            continue
+
         for inode in dirent.inodes:
             try:
                 if stat.S_ISDIR(inode.mode):
@@ -482,12 +492,19 @@ def dump_fs(fs, target):
                     if not os.path.isdir(target_path):
                         os.makedirs(target_path)
                 elif stat.S_ISLNK(inode.mode):
+                    link_path = inode.data.decode('utf-8')
+                    if link_path:
+                        link_path = link_path[1:]
+                    link_target = os.path.realpath(os.path.join(target, link_path))
+                    if not is_safe_path(target, link_target):
+                        print(f"Path traversal attempt through symlink to {link_target}, discarding.")
+                        continue
                     print("writing S_ISLNK", path)
                     if not os.path.islink(target_path):
                         if os.path.exists(target_path):
                             print("file already exists as", inode.data)
                             continue
-                        os.symlink(inode.data, target_path)
+                        os.symlink(link_target, target_path)
                 elif stat.S_ISREG(inode.mode):
                     print("writing S_ISREG", path)
                     if not os.path.isfile(target_path):
@@ -561,7 +578,7 @@ def main():
         if not fs[JFFS2_NODETYPE_DIRENT]:
             continue
 
-        dest_path_fs = os.path.join(dest_path, "fs_%i" % fs_index)
+        dest_path_fs = os.path.realpath(os.path.join(dest_path, "fs_%i" % fs_index))
         print("dumping fs #%i to %s" % (fs_index, dest_path_fs))
         for key, value in fs.items():
             if key == "endianness":
