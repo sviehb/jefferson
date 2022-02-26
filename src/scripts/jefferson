@@ -8,6 +8,8 @@ import zlib
 import binascii
 import cstruct
 import lzo
+import mmap
+import contextlib
 
 from jefferson import jffs2_lzma, rtime
 
@@ -165,7 +167,7 @@ class Jffs2_raw_dirent(cstruct.CStruct):
 
     def unpack(self, data, node_offset):
         cstruct.CStruct.unpack(self, data[: self.size])
-        self.name = data[self.size : self.size + self.nsize]
+        self.name = data[self.size : self.size + self.nsize].tobytes()
         self.node_offset = node_offset
 
         if mtd_crc(data[: self.size - 8]) == self.node_crc:
@@ -219,7 +221,7 @@ class Jffs2_raw_inode(cstruct.CStruct):
     def unpack(self, data):
         cstruct.CStruct.unpack(self, data[: self.size])
 
-        node_data = data[self.size : self.size + self.csize]
+        node_data = data[self.size : self.size + self.csize].tobytes()
         if self.compr == JFFS2_COMPR_NONE:
             self.data = node_data
         elif self.compr == JFFS2_COMPR_ZERO:
@@ -341,6 +343,8 @@ def scan_fs(content, endianness, verbose=False):
     jffs2_old_magic_bitmask_str = struct.pack(endianness + "H", JFFS2_OLD_MAGIC_BITMASK)
     jffs2_magic_bitmask_str = struct.pack(endianness + "H", JFFS2_MAGIC_BITMASK)
     fs_index = 0
+    content_mv = memoryview(content)
+
 
     fs = {}
     fs[fs_index] = {}
@@ -367,7 +371,7 @@ def scan_fs(content, endianness, verbose=False):
             pos = find_result_old
 
         unknown_node = Jffs2_unknown_node()
-        unknown_node.unpack(content[pos : pos + unknown_node.size])
+        unknown_node.unpack(content_mv[pos : pos + unknown_node.size])
         if not unknown_node.hdr_crc_match:
             pos += 1
             continue
@@ -381,7 +385,7 @@ def scan_fs(content, endianness, verbose=False):
             if unknown_node.nodetype in NODETYPES:
                 if unknown_node.nodetype == JFFS2_NODETYPE_DIRENT:
                     dirent = Jffs2_raw_dirent()
-                    dirent.unpack(content[0 + offset :], offset)
+                    dirent.unpack(content_mv[0 + offset :], offset)
                     if dirent.ino in dirent_dict:
                         print("duplicate inode use detected!!!")
                         fs_index += 1
@@ -401,25 +405,25 @@ def scan_fs(content, endianness, verbose=False):
                         print("0x%08X:" % (offset), dirent)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_INODE:
                     inode = Jffs2_raw_inode()
-                    inode.unpack(content[0 + offset :])
+                    inode.unpack(content_mv[0 + offset :])
                     fs[fs_index][JFFS2_NODETYPE_INODE].append(inode)
                     if verbose:
                         print("0x%08X:" % (offset), inode)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_XREF:
                     xref = Jffs2_raw_xref()
-                    xref.unpack(content[offset : offset + xref.size])
+                    xref.unpack(content_mv[offset : offset + xref.size])
                     fs[fs_index][JFFS2_NODETYPE_XREF].append(xref)
                     if verbose:
                         print("0x%08X:" % (offset), xref)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_XATTR:
                     xattr = Jffs2_raw_xattr()
-                    xattr.unpack(content[offset : offset + xattr.size])
+                    xattr.unpack(content_mv[offset : offset + xattr.size])
                     fs[fs_index][JFFS2_NODETYPE_XREF].append(xattr)
                     if verbose:
                         print("0x%08X:" % (offset), xattr)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_SUMMARY:
                     summary = Jffs2_raw_summary()
-                    summary.unpack(content[offset : offset + summary.size])
+                    summary.unpack(content_mv[offset : offset + summary.size])
                     summaries.append(summary)
                     fs[fs_index][JFFS2_NODETYPE_SUMMARY].append(summary)
                     if verbose:
@@ -430,6 +434,7 @@ def scan_fs(content, endianness, verbose=False):
                     pass
                 else:
                     print("Unhandled node type", unknown_node.nodetype, unknown_node)
+    content_mv.release()
     return fs.values()
 
 
@@ -557,42 +562,46 @@ def main():
     else:
         os.mkdir(dest_path)
 
-    with open(args.filesystem, "rb") as filesystem:
-        content = filesystem.read()
+    with contextlib.ExitStack() as context_stack:
+        filesystem = context_stack.enter_context(open(args.filesystem, "rb"))
+        filesystem_len = os.fstat(filesystem.fileno()).st_size
+        if 0 == filesystem_len:
+            return
+        content = context_stack.enter_context(
+            mmap.mmap(filesystem.fileno(), filesystem_len, access=mmap.ACCESS_READ)
+        )
+        magic = struct.unpack("<H", content[0:2])[0]
+        if magic in [JFFS2_OLD_MAGIC_BITMASK, JFFS2_MAGIC_BITMASK]:
+            endianness = cstruct.LITTLE_ENDIAN
+        else:
+            endianness = cstruct.BIG_ENDIAN
 
-    magic = struct.unpack("<H", content[0:2])[0]
-    if magic in [JFFS2_OLD_MAGIC_BITMASK, JFFS2_MAGIC_BITMASK]:
-        endianness = cstruct.LITTLE_ENDIAN
-    else:
-        endianness = cstruct.BIG_ENDIAN
+        set_endianness(endianness)
+        fs_list = list(scan_fs(content, endianness, verbose=args.verbose))
 
-    set_endianness(endianness)
-    fs_list = list(scan_fs(content, endianness, verbose=args.verbose))
-
-    fs_index = 1
-    for fs in fs_list:
-        if not fs[JFFS2_NODETYPE_DIRENT]:
-            continue
-
-        dest_path_fs = os.path.realpath(os.path.join(dest_path, "fs_%i" % fs_index))
-        print("dumping fs #%i to %s" % (fs_index, dest_path_fs))
-        for key, value in fs.items():
-            if key == "endianness":
-                if value == cstruct.BIG_ENDIAN:
-                    print("Endianness: Big")
-                elif value == cstruct.LITTLE_ENDIAN:
-                    print("Endianness: Little")
+        fs_index = 1
+        for fs in fs_list:
+            if not fs[JFFS2_NODETYPE_DIRENT]:
                 continue
 
-            print("%s count: %i" % (NODETYPES[key].__name__, len(value)))
+            dest_path_fs = os.path.realpath(os.path.join(dest_path, "fs_%i" % fs_index))
+            print("dumping fs #%i to %s" % (fs_index, dest_path_fs))
+            for key, value in fs.items():
+                if key == "endianness":
+                    if value == cstruct.BIG_ENDIAN:
+                        print("Endianness: Big")
+                    elif value == cstruct.LITTLE_ENDIAN:
+                        print("Endianness: Little")
+                    continue
 
-        if not os.path.exists(dest_path_fs):
-            os.mkdir(dest_path_fs)
+                print("%s count: %i" % (NODETYPES[key].__name__, len(value)))
 
-        dump_fs(fs, dest_path_fs)
-        print("-" * 10)
-        fs_index += 1
+            if not os.path.exists(dest_path_fs):
+                os.mkdir(dest_path_fs)
 
+            dump_fs(fs, dest_path_fs)
+            print("-" * 10)
+            fs_index += 1
 
 if __name__ == "__main__":
     main()
