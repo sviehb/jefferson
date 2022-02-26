@@ -492,19 +492,12 @@ def dump_fs(fs, target):
                     if not os.path.isdir(target_path):
                         os.makedirs(target_path)
                 elif stat.S_ISLNK(inode.mode):
-                    link_path = inode.data.decode('utf-8')
-                    if link_path:
-                        link_path = link_path[1:]
-                    link_target = os.path.realpath(os.path.join(target, link_path))
-                    if not is_safe_path(target, link_target):
-                        print(f"Path traversal attempt through symlink to {link_target}, discarding.")
-                        continue
                     print("writing S_ISLNK", path)
                     if not os.path.islink(target_path):
                         if os.path.exists(target_path):
                             print("file already exists as", inode.data)
                             continue
-                        os.symlink(link_target, target_path)
+                        os.symlink(inode.data, target_path)
                 elif stat.S_ISREG(inode.mode):
                     print("writing S_ISREG", path)
                     if not os.path.isfile(target_path):
