@@ -4,6 +4,7 @@ import argparse
 import struct
 import stat
 import os
+import sys
 import zlib
 import binascii
 import cstruct
@@ -222,22 +223,26 @@ class Jffs2_raw_inode(cstruct.CStruct):
         cstruct.CStruct.unpack(self, data[: self.size])
 
         node_data = data[self.size : self.size + self.csize].tobytes()
-        if self.compr == JFFS2_COMPR_NONE:
-            self.data = node_data
-        elif self.compr == JFFS2_COMPR_ZERO:
+        try:
+            if self.compr == JFFS2_COMPR_NONE:
+                self.data = node_data
+            elif self.compr == JFFS2_COMPR_ZERO:
+                self.data = b"\x00" * self.dsize
+            elif self.compr == JFFS2_COMPR_ZLIB:
+                self.data = zlib.decompress(node_data)
+            elif self.compr == JFFS2_COMPR_RTIME:
+                self.data = rtime.decompress(node_data, self.dsize)
+            elif self.compr == JFFS2_COMPR_LZMA:
+                self.data = jffs2_lzma.decompress(node_data, self.dsize)
+            elif self.compr == JFFS2_COMPR_LZO:
+                self.data = lzo.decompress(node_data, False, self.dsize)
+            else:
+                print("compression not implemented", self)
+                print(node_data.hex()[:20])
+                self.data = node_data
+        except Exception as e:
+            print("Decompression error on inode {}: {}".format(self.ino, e), file=sys.stderr)
             self.data = b"\x00" * self.dsize
-        elif self.compr == JFFS2_COMPR_ZLIB:
-            self.data = zlib.decompress(node_data)
-        elif self.compr == JFFS2_COMPR_RTIME:
-            self.data = rtime.decompress(node_data, self.dsize)
-        elif self.compr == JFFS2_COMPR_LZMA:
-            self.data = jffs2_lzma.decompress(node_data, self.dsize)
-        elif self.compr == JFFS2_COMPR_LZO:
-            self.data = lzo.decompress(node_data, False, self.dsize)
-        else:
-            print("compression not implemented", self)
-            print(node_data.hex()[:20])
-            self.data = node_data
 
         if len(self.data) != self.dsize:
             print("data length mismatch!")
@@ -345,10 +350,8 @@ def scan_fs(content, endianness, verbose=False):
     fs_index = 0
     content_mv = memoryview(content)
 
-
     fs = {}
     fs[fs_index] = {}
-    fs[fs_index]["endianness"] = endianness
     fs[fs_index][JFFS2_NODETYPE_INODE] = []
     fs[fs_index][JFFS2_NODETYPE_DIRENT] = []
     fs[fs_index][JFFS2_NODETYPE_XATTR] = []
@@ -390,7 +393,6 @@ def scan_fs(content, endianness, verbose=False):
                         print("duplicate inode use detected!!!")
                         fs_index += 1
                         fs[fs_index] = {}
-                        fs[fs_index]["endianness"] = endianness
                         fs[fs_index][JFFS2_NODETYPE_INODE] = []
                         fs[fs_index][JFFS2_NODETYPE_DIRENT] = []
                         fs[fs_index][JFFS2_NODETYPE_XATTR] = []
@@ -577,23 +579,16 @@ def main():
             endianness = cstruct.BIG_ENDIAN
 
         set_endianness(endianness)
-        fs_list = list(scan_fs(content, endianness, verbose=args.verbose))
 
+        fs_list = list(scan_fs(content, endianness, verbose=args.verbose))
         fs_index = 1
         for fs in fs_list:
             if not fs[JFFS2_NODETYPE_DIRENT]:
                 continue
 
             dest_path_fs = os.path.realpath(os.path.join(dest_path, "fs_%i" % fs_index))
-            print("dumping fs #%i to %s" % (fs_index, dest_path_fs))
+            print("dumping fs #%i to %s (endianness: %s)" % (fs_index, dest_path_fs, endianness))
             for key, value in fs.items():
-                if key == "endianness":
-                    if value == cstruct.BIG_ENDIAN:
-                        print("Endianness: Big")
-                    elif value == cstruct.LITTLE_ENDIAN:
-                        print("Endianness: Little")
-                    continue
-
                 print("%s count: %i" % (NODETYPES[key].__name__, len(value)))
 
             if not os.path.exists(dest_path_fs):
