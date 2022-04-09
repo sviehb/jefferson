@@ -10,7 +10,7 @@ Follow these steps on Debian based systems (Debian, Ubuntu, Kali, ...) to perfor
 git clone https://github.com/sviehb/jefferson.git
 cd jefferson
 sudo apt update
-sudo apt python3-pip liblzo2-dev
+sudo apt install python3-pip liblzo2-dev
 sudo python3 -m pip install -r requirements.txt
 sudo python3 setup.py install
 ```
