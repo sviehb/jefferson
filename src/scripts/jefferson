@@ -403,7 +403,6 @@ def dump_fs(fs, target):
                     print("writing S_ISLNK", path)
                     if not os.path.islink(target_path):
                         if os.path.exists(target_path):
-                            print("file already exists as", inode.data)
                             continue
                         os.symlink(inode.data, target_path)
                 elif stat.S_ISREG(inode.mode):
