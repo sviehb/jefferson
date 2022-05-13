@@ -390,15 +390,8 @@ def scan_fs(content, endianness, verbose=False):
                     dirent = Jffs2_raw_dirent()
                     dirent.unpack(content_mv[0 + offset :], offset)
                     if dirent.ino in dirent_dict:
-                        print("duplicate inode use detected!!!")
-                        fs_index += 1
-                        fs[fs_index] = {}
-                        fs[fs_index][JFFS2_NODETYPE_INODE] = []
-                        fs[fs_index][JFFS2_NODETYPE_DIRENT] = []
-                        fs[fs_index][JFFS2_NODETYPE_XATTR] = []
-                        fs[fs_index][JFFS2_NODETYPE_XREF] = []
-                        fs[fs_index][JFFS2_NODETYPE_SUMMARY] = []
-                        dirent_dict = {}
+                        if dirent.version > dirent_dict[dirent.ino].version:
+                            dirent_dict[dirent.ino] = dirent
 
                     dirent_dict[dirent.ino] = dirent
 
