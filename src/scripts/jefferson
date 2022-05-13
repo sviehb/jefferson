@@ -47,7 +47,9 @@ JFFS2_NODETYPE_DIRENT = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 1
 JFFS2_NODETYPE_INODE = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 2
 JFFS2_NODETYPE_CLEANMARKER = JFFS2_FEATURE_RWCOMPAT_DELETE | JFFS2_NODE_ACCURATE | 3
 JFFS2_NODETYPE_PADDING = JFFS2_FEATURE_RWCOMPAT_DELETE | JFFS2_NODE_ACCURATE | 4
-
+JFFS2_NODETYPE_SUMMARY = JFFS2_FEATURE_RWCOMPAT_DELETE | JFFS2_NODE_ACCURATE | 6
+JFFS2_NODETYPE_XATTR = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 8
+JFFS2_NODETYPE_XREF = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 9
 
 def mtd_crc(data):
     return (binascii.crc32(data, -1) ^ -1) & 0xFFFFFFFF
@@ -326,8 +328,14 @@ def scan_fs(content, endianness, verbose=False):
                     pass
                 elif unknown_node.nodetype == JFFS2_NODETYPE_PADDING:
                     pass
+                elif unknown_node.nodetype == JFFS2_NODETYPE_SUMMARY:
+                    pass
+                elif unknown_node.nodetype == JFFS2_NODETYPE_XATTR:
+                    pass
+                elif unknown_node.nodetype == JFFS2_NODETYPE_XREF:
+                    pass
                 else:
-                    print("Unhandled node type", unknown_node.nodetype, unknown_node)
+                    print("Unknown node type", unknown_node.nodetype, unknown_node)
     content_mv.release()
     return fs
 
