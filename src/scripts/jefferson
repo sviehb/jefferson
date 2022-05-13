@@ -47,7 +47,6 @@ JFFS2_NODETYPE_DIRENT = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 1
 JFFS2_NODETYPE_INODE = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 2
 JFFS2_NODETYPE_CLEANMARKER = JFFS2_FEATURE_RWCOMPAT_DELETE | JFFS2_NODE_ACCURATE | 3
 JFFS2_NODETYPE_PADDING = JFFS2_FEATURE_RWCOMPAT_DELETE | JFFS2_NODE_ACCURATE | 4
-JFFS2_NODETYPE_XATTR = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 8
 JFFS2_NODETYPE_XREF = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 9
 
 
@@ -88,26 +87,6 @@ class Jffs2_unknown_node(cstruct.CStruct):
         else:
             # print("hdr_crc does not match!")
             self.hdr_crc_match = False
-
-
-class Jffs2_raw_xattr(cstruct.CStruct):
-    __byte_order__ = cstruct.LITTLE_ENDIAN
-    __def__ = """
-        struct {
-            jint16_t magic;
-            jint16_t nodetype;      /* = JFFS2_NODETYPE_XATTR */
-            jint32_t totlen;
-            jint32_t hdr_crc;
-            jint32_t xid;           /* XATTR identifier number */
-            jint32_t version;
-            uint8_t xprefix;
-            uint8_t name_len;
-            jint16_t value_len;
-            jint32_t data_crc;
-            jint32_t node_crc;
-            uint8_t data[0];
-        }
-    """
 
 
 class Jffs2_raw_xref(cstruct.CStruct):
@@ -264,7 +243,6 @@ NODETYPES = {
     JFFS2_NODETYPE_DIRENT: Jffs2_raw_dirent,
     JFFS2_NODETYPE_INODE: Jffs2_raw_inode,
     JFFS2_NODETYPE_CLEANMARKER: "JFFS2_NODETYPE_CLEANMARKER",
-    JFFS2_NODETYPE_XATTR: Jffs2_raw_xattr,
     JFFS2_NODETYPE_XREF: Jffs2_raw_xref,
     JFFS2_NODETYPE_PADDING: "JFFS2_NODETYPE_PADDING",
 }
@@ -303,12 +281,6 @@ def set_endianness(endianness):
         __byte_order__=endianness,
     )
 
-    Jffs2_raw_xattr = Jffs2_raw_xattr.parse(
-        Jffs2_raw_xattr.__def__,
-        __name__=Jffs2_raw_xattr.__name__,
-        __byte_order__=endianness,
-    )
-
     Jffs2_raw_xref = Jffs2_raw_xref.parse(
         Jffs2_raw_xref.__def__,
         __name__=Jffs2_raw_xref.__name__,
@@ -326,7 +298,6 @@ def scan_fs(content, endianness, verbose=False):
     fs[JFFS2_NODETYPE_INODE] = {}
     fs[JFFS2_NODETYPE_DIRENT] = {}
     fs[JFFS2_NODETYPE_XREF] = {}
-    fs[JFFS2_NODETYPE_XATTR] = []
 
     while True:
         find_result = content.find(
@@ -382,12 +353,6 @@ def scan_fs(content, endianness, verbose=False):
                     fs[JFFS2_NODETYPE_XREF][xref.ino] = xref
                     if verbose:
                         print("0x%08X:" % (offset), xref)
-                elif unknown_node.nodetype == JFFS2_NODETYPE_XATTR:
-                    xattr = Jffs2_raw_xattr()
-                    xattr.unpack(content_mv[offset : offset + xattr.size])
-                    fs[JFFS2_NODETYPE_XATTR].append(xattr)
-                    if verbose:
-                        print("0x%08X:" % (offset), xattr)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_CLEANMARKER:
                     pass
                 elif unknown_node.nodetype == JFFS2_NODETYPE_PADDING:
