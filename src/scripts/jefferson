@@ -350,13 +350,12 @@ def scan_fs(content, endianness, verbose=False):
     content_mv = memoryview(content)
 
     fs = {}
-    fs[JFFS2_NODETYPE_INODE] = []
-    fs[JFFS2_NODETYPE_DIRENT] = []
+    fs[JFFS2_NODETYPE_INODE] = {}
+    fs[JFFS2_NODETYPE_DIRENT] = {}
+    fs[JFFS2_NODETYPE_XREF] = {}
     fs[JFFS2_NODETYPE_XATTR] = []
-    fs[JFFS2_NODETYPE_XREF] = []
     fs[JFFS2_NODETYPE_SUMMARY] = []
 
-    dirent_dict = {}
     while True:
         find_result = content.find(
             jffs2_magic_bitmask_str, pos, len(content) - Jffs2_unknown_node.size
@@ -387,31 +386,35 @@ def scan_fs(content, endianness, verbose=False):
                 if unknown_node.nodetype == JFFS2_NODETYPE_DIRENT:
                     dirent = Jffs2_raw_dirent()
                     dirent.unpack(content_mv[0 + offset :], offset)
-                    if dirent.ino in dirent_dict:
-                        if dirent.version > dirent_dict[dirent.ino].version:
-                            dirent_dict[dirent.ino] = dirent
-
-                    dirent_dict[dirent.ino] = dirent
-
-                    fs[JFFS2_NODETYPE_DIRENT].append(dirent)
+                    if dirent.ino in fs[JFFS2_NODETYPE_DIRENT]:
+                        if dirent.version > fs[JFFS2_NODETYPE_DIRENT][dirent.ino].version:
+                            fs[JFFS2_NODETYPE_DIRENT][dirent.ino] = dirent
+                    else:
+                        fs[JFFS2_NODETYPE_DIRENT][dirent.ino] = dirent
                     if verbose:
                         print("0x%08X:" % (offset), dirent)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_INODE:
                     inode = Jffs2_raw_inode()
                     inode.unpack(content_mv[0 + offset :])
-                    fs[JFFS2_NODETYPE_INODE].append(inode)
+
+                    if inode.ino in fs[JFFS2_NODETYPE_INODE]:
+                        if inode.version > fs[JFFS2_NODETYPE_INODE][inode.ino].version:
+                            fs[JFFS2_NODETYPE_INODE][inode.ino] = inode
+                    else:
+                        fs[JFFS2_NODETYPE_INODE][inode.ino] = inode
+
                     if verbose:
                         print("0x%08X:" % (offset), inode)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_XREF:
                     xref = Jffs2_raw_xref()
                     xref.unpack(content_mv[offset : offset + xref.size])
-                    fs[JFFS2_NODETYPE_XREF].append(xref)
+                    fs[JFFS2_NODETYPE_XREF][xref.ino] = xref
                     if verbose:
                         print("0x%08X:" % (offset), xref)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_XATTR:
                     xattr = Jffs2_raw_xattr()
                     xattr.unpack(content_mv[offset : offset + xattr.size])
-                    fs[JFFS2_NODETYPE_XREF].append(xattr)
+                    fs[JFFS2_NODETYPE_XATTR].append(xattr)
                     if verbose:
                         print("0x%08X:" % (offset), xattr)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_SUMMARY:
@@ -453,16 +456,14 @@ def get_device(inode):
 def dump_fs(fs, target):
     node_dict = {}
 
-    for dirent in fs[JFFS2_NODETYPE_DIRENT]:
+    for dirent in fs[JFFS2_NODETYPE_DIRENT].values():
         dirent.inodes = []
-        for inode in fs[JFFS2_NODETYPE_INODE]:
+        for inode in fs[JFFS2_NODETYPE_INODE].values():
             if inode.ino == dirent.ino:
                 dirent.inodes.append(inode)
-        if dirent.ino in node_dict:
-            print("duplicate dirent.ino use detected!!!", dirent)
         node_dict[dirent.ino] = dirent
 
-    for dirent in fs[JFFS2_NODETYPE_DIRENT]:
+    for dirent in fs[JFFS2_NODETYPE_DIRENT].values():
         pnode_pino = dirent.pino
         pnodes = []
         for _ in range(100):
