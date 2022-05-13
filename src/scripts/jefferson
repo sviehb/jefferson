@@ -347,16 +347,14 @@ def scan_fs(content, endianness, verbose=False):
     pos = 0
     jffs2_old_magic_bitmask_str = struct.pack(endianness + "H", JFFS2_OLD_MAGIC_BITMASK)
     jffs2_magic_bitmask_str = struct.pack(endianness + "H", JFFS2_MAGIC_BITMASK)
-    fs_index = 0
     content_mv = memoryview(content)
 
     fs = {}
-    fs[fs_index] = {}
-    fs[fs_index][JFFS2_NODETYPE_INODE] = []
-    fs[fs_index][JFFS2_NODETYPE_DIRENT] = []
-    fs[fs_index][JFFS2_NODETYPE_XATTR] = []
-    fs[fs_index][JFFS2_NODETYPE_XREF] = []
-    fs[fs_index][JFFS2_NODETYPE_SUMMARY] = []
+    fs[JFFS2_NODETYPE_INODE] = []
+    fs[JFFS2_NODETYPE_DIRENT] = []
+    fs[JFFS2_NODETYPE_XATTR] = []
+    fs[JFFS2_NODETYPE_XREF] = []
+    fs[JFFS2_NODETYPE_SUMMARY] = []
 
     dirent_dict = {}
     while True:
@@ -395,32 +393,32 @@ def scan_fs(content, endianness, verbose=False):
 
                     dirent_dict[dirent.ino] = dirent
 
-                    fs[fs_index][JFFS2_NODETYPE_DIRENT].append(dirent)
+                    fs[JFFS2_NODETYPE_DIRENT].append(dirent)
                     if verbose:
                         print("0x%08X:" % (offset), dirent)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_INODE:
                     inode = Jffs2_raw_inode()
                     inode.unpack(content_mv[0 + offset :])
-                    fs[fs_index][JFFS2_NODETYPE_INODE].append(inode)
+                    fs[JFFS2_NODETYPE_INODE].append(inode)
                     if verbose:
                         print("0x%08X:" % (offset), inode)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_XREF:
                     xref = Jffs2_raw_xref()
                     xref.unpack(content_mv[offset : offset + xref.size])
-                    fs[fs_index][JFFS2_NODETYPE_XREF].append(xref)
+                    fs[JFFS2_NODETYPE_XREF].append(xref)
                     if verbose:
                         print("0x%08X:" % (offset), xref)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_XATTR:
                     xattr = Jffs2_raw_xattr()
                     xattr.unpack(content_mv[offset : offset + xattr.size])
-                    fs[fs_index][JFFS2_NODETYPE_XREF].append(xattr)
+                    fs[JFFS2_NODETYPE_XREF].append(xattr)
                     if verbose:
                         print("0x%08X:" % (offset), xattr)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_SUMMARY:
                     summary = Jffs2_raw_summary()
                     summary.unpack(content_mv[offset : offset + summary.size])
                     summaries.append(summary)
-                    fs[fs_index][JFFS2_NODETYPE_SUMMARY].append(summary)
+                    fs[JFFS2_NODETYPE_SUMMARY].append(summary)
                     if verbose:
                         print("0x%08X:" % (offset), summary)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_CLEANMARKER:
@@ -430,7 +428,7 @@ def scan_fs(content, endianness, verbose=False):
                 else:
                     print("Unhandled node type", unknown_node.nodetype, unknown_node)
     content_mv.release()
-    return fs.values()
+    return fs
 
 
 def get_device(inode):
@@ -573,23 +571,16 @@ def main():
 
         set_endianness(endianness)
 
-        fs_list = list(scan_fs(content, endianness, verbose=args.verbose))
-        fs_index = 1
-        for fs in fs_list:
-            if not fs[JFFS2_NODETYPE_DIRENT]:
-                continue
+        fs = scan_fs(content, endianness, verbose=args.verbose)
+        print("dumping fs to %s (endianness: %s)" % (dest_path, endianness))
+        for key, value in fs.items():
+            print("%s count: %i" % (NODETYPES[key].__name__, len(value)))
 
-            dest_path_fs = os.path.realpath(os.path.join(dest_path, "fs_%i" % fs_index))
-            print("dumping fs #%i to %s (endianness: %s)" % (fs_index, dest_path_fs, endianness))
-            for key, value in fs.items():
-                print("%s count: %i" % (NODETYPES[key].__name__, len(value)))
+        if not os.path.exists(dest_path):
+            os.mkdir(dest_path)
 
-            if not os.path.exists(dest_path_fs):
-                os.mkdir(dest_path_fs)
-
-            dump_fs(fs, dest_path_fs)
-            print("-" * 10)
-            fs_index += 1
+        dump_fs(fs, dest_path)
+        print("-" * 10)
 
 if __name__ == "__main__":
     main()
