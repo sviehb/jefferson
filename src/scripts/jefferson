@@ -54,13 +54,6 @@ JFFS2_NODETYPE_XREF = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 9
 def mtd_crc(data):
     return (binascii.crc32(data, -1) ^ -1) & 0xFFFFFFFF
 
-def is_safe_path(basedir, path, follow_symlinks=True):
-    if follow_symlinks:
-        matchpath = os.path.realpath(path)
-    else:
-        matchpath = os.path.abspath(path)
-    return basedir == os.path.commonpath((basedir, matchpath))
-
 cstruct.typedef("uint8", "uint8_t")
 cstruct.typedef("uint16", "jint16_t")
 cstruct.typedef("uint32", "jint32_t")
@@ -89,6 +82,57 @@ class Jffs2_unknown_node(cstruct.CStruct):
             # print("hdr_crc does not match!")
             self.hdr_crc_match = False
 
+class Jffs2_raw_xattr(cstruct.CStruct):
+    __byte_order__ = cstruct.LITTLE_ENDIAN
+    __def__ = """
+        struct {
+            jint16_t magic;
+            jint16_t nodetype;      /* = JFFS2_NODETYPE_XATTR */
+            jint32_t totlen;
+            jint32_t hdr_crc;
+            jint32_t xid;           /* XATTR identifier number */
+            jint32_t version;
+            uint8_t xprefix;
+            uint8_t name_len;
+            jint16_t value_len;
+            jint32_t data_crc;
+            jint32_t node_crc;
+            uint8_t data[0];
+        }
+    """
+
+class Jffs2_raw_summary(cstruct.CStruct):
+    __byte_order__ = cstruct.LITTLE_ENDIAN
+    __def__ = """
+        struct {
+            jint16_t magic;
+            jint16_t nodetype;      /* = JFFS2_NODETYPE_SUMMARY */
+            jint32_t totlen;
+            jint32_t hdr_crc;
+            jint32_t sum_num;       /* number of sum entries*/
+            jint32_t cln_mkr;       /* clean marker size, 0 = no cleanmarker */
+            jint32_t padded;        /* sum of the size of padding nodes */
+            jint32_t sum_crc;       /* summary information crc */
+            jint32_t node_crc;      /* node crc */
+            jint32_t sum[0];        /* inode summary info */
+        }
+    """
+
+
+class Jffs2_raw_xref(cstruct.CStruct):
+    __byte_order__ = cstruct.LITTLE_ENDIAN
+    __def__ = """
+        struct {
+            jint16_t magic;
+            jint16_t nodetype;      /* = JFFS2_NODETYPE_XREF */
+            jint32_t totlen;
+            jint32_t hdr_crc;
+            jint32_t ino;           /* inode number */
+            jint32_t xid;           /* XATTR identifier number */
+            jint32_t xseqno;        /* xref sequencial number */
+            jint32_t node_crc;
+        }
+    """
 
 class Jffs2_raw_dirent(cstruct.CStruct):
     __byte_order__ = cstruct.LITTLE_ENDIAN
@@ -133,7 +177,6 @@ class Jffs2_raw_dirent(cstruct.CStruct):
         for field in self.__fields__ + ["name", "node_offset"]:
             result.append(field + "=" + str(getattr(self, field, None)))
         return type(self).__name__ + "(" + ", ".join(result) + ")"
-
 
 class Jffs2_raw_inode(cstruct.CStruct):
     __byte_order__ = cstruct.LITTLE_ENDIAN
@@ -228,6 +271,9 @@ NODETYPES = {
     JFFS2_NODETYPE_DIRENT: Jffs2_raw_dirent,
     JFFS2_NODETYPE_INODE: Jffs2_raw_inode,
     JFFS2_NODETYPE_CLEANMARKER: "JFFS2_NODETYPE_CLEANMARKER",
+    JFFS2_NODETYPE_SUMMARY: Jffs2_raw_summary,
+    JFFS2_NODETYPE_XATTR: Jffs2_raw_xattr,
+    JFFS2_NODETYPE_XREF: Jffs2_raw_xref,
     JFFS2_NODETYPE_PADDING: "JFFS2_NODETYPE_PADDING",
 }
 
@@ -265,6 +311,23 @@ def set_endianness(endianness):
         __byte_order__=endianness,
     )
 
+    Jffs2_raw_summary = Jffs2_raw_summary.parse(
+        Jffs2_raw_summary.__def__,
+        __name__=Jffs2_raw_summary.__name__,
+        __byte_order__=endianness,
+    )
+
+    Jffs2_raw_xattr = Jffs2_raw_xattr.parse(
+        Jffs2_raw_xattr.__def__,
+        __name__=Jffs2_raw_xattr.__name__,
+        __byte_order__=endianness,
+    )
+
+    Jffs2_raw_xref = Jffs2_raw_xref.parse(
+        Jffs2_raw_xref.__def__,
+        __name__=Jffs2_raw_xref.__name__,
+        __byte_order__=endianness,
+    )
 
 def scan_fs(content, endianness, verbose=False):
     pos = 0
@@ -275,6 +338,9 @@ def scan_fs(content, endianness, verbose=False):
     fs = {}
     fs[JFFS2_NODETYPE_INODE] = {}
     fs[JFFS2_NODETYPE_DIRENT] = {}
+    fs[JFFS2_NODETYPE_XATTR] = {}
+    fs[JFFS2_NODETYPE_XREF] = {}
+    fs[JFFS2_NODETYPE_SUMMARY] = []
 
     while True:
         find_result = content.find(
@@ -318,21 +384,42 @@ def scan_fs(content, endianness, verbose=False):
                     inode.unpack(content_mv[0 + offset :])
 
                     if inode.ino in fs[JFFS2_NODETYPE_INODE]:
-                        if inode.version > fs[JFFS2_NODETYPE_INODE][inode.ino].version:
-                            fs[JFFS2_NODETYPE_INODE][inode.ino] = inode
+                        fs[JFFS2_NODETYPE_INODE][inode.ino].append(inode)
                     else:
-                        fs[JFFS2_NODETYPE_INODE][inode.ino] = inode
+                        fs[JFFS2_NODETYPE_INODE][inode.ino] = [inode]
                     if verbose:
                         print("0x%08X:" % (offset), inode)
+                elif unknown_node.nodetype == JFFS2_NODETYPE_SUMMARY:
+                    summary = Jffs2_raw_summary()
+                    summary.unpack(content_mv[0 + offset :])
+                    fs[JFFS2_NODETYPE_SUMMARY].append(summary)
+                    if verbose:
+                        print("0x%08X:" % (offset), summary)
+                elif unknown_node.nodetype == JFFS2_NODETYPE_XATTR:
+                    xattr = Jffs2_raw_xattr()
+                    xattr.unpack(content_mv[0 + offset :])
+
+                    if xattr.ino in fs[JFFS2_NODETYPE_XATTR]:
+                        if xattr.version > fs[JFFS2_NODETYPE_XATTR][xattr.ino].version:
+                            fs[JFFS2_NODETYPE_XATTR][xattr.ino] = xattr
+                    else:
+                        fs[JFFS2_NODETYPE_XATTR][xattr.ino] = xattr
+                    if verbose:
+                        print("0x%08X:" % (offset), xattr)
+                elif unknown_node.nodetype == JFFS2_NODETYPE_XREF:
+                    xref = Jffs2_raw_xref()
+                    xref.unpack(content_mv[0 + offset :])
+
+                    if xref.ino in fs[JFFS2_NODETYPE_XREF]:
+                        if xref.version > fs[JFFS2_NODETYPE_XREF][xref.ino].version:
+                            fs[JFFS2_NODETYPE_XREF][xref.ino] = xref
+                    else:
+                        fs[JFFS2_NODETYPE_XREF][xref.ino] = xref
+                    if verbose:
+                        print("0x%08X:" % (offset), xref)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_CLEANMARKER:
                     pass
                 elif unknown_node.nodetype == JFFS2_NODETYPE_PADDING:
-                    pass
-                elif unknown_node.nodetype == JFFS2_NODETYPE_SUMMARY:
-                    pass
-                elif unknown_node.nodetype == JFFS2_NODETYPE_XATTR:
-                    pass
-                elif unknown_node.nodetype == JFFS2_NODETYPE_XREF:
                     pass
                 else:
                     print("Unknown node type", unknown_node.nodetype, unknown_node)
@@ -358,21 +445,28 @@ def get_device(inode):
         return os.makedev((node.old_id >> 8) & 0xFF, node.old_id & 0xFF)
     return None
 
+def sort_version(item):
+    return item.version
 
-def dump_fs(fs, target):
+def dump_fs(fs, target, verbose=False, force=False):
     node_dict = {}
 
+    # Nodes
     for dirent in fs[JFFS2_NODETYPE_DIRENT].values():
         dirent.inodes = []
-        for inode in fs[JFFS2_NODETYPE_INODE].values():
-            if inode.ino == dirent.ino:
-                dirent.inodes.append(inode)
+        for ino, inodes in fs[JFFS2_NODETYPE_INODE].items():
+            if ino == dirent.ino:
+                dirent.inodes = sorted(inodes, key=sort_version)
+        if dirent.ino in node_dict:
+            print("duplicate dirent.ino use detected!!!", dirent)
         node_dict[dirent.ino] = dirent
 
+    # Path Nodes
     for dirent in fs[JFFS2_NODETYPE_DIRENT].values():
         pnode_pino = dirent.pino
         pnodes = []
         for _ in range(100):
+            # the same effect as pino in node_dict.keys()
             if pnode_pino not in node_dict:
                 break
             pnode = node_dict[pnode_pino]
@@ -389,25 +483,26 @@ def dump_fs(fs, target):
 
         target_path = os.path.realpath(os.path.join(os.getcwd(), target, path))
 
-        if not is_safe_path(target, target_path):
-            print(f"Path traversal attempt to {target_path}, discarding.")
-            continue
 
         for inode in dirent.inodes:
             try:
                 if stat.S_ISDIR(inode.mode):
-                    print("writing S_ISDIR", path)
+                    if verbose:
+                        print("writing S_ISDIR", path)
                     if not os.path.isdir(target_path):
                         os.makedirs(target_path)
                 elif stat.S_ISLNK(inode.mode):
-                    print("writing S_ISLNK", path)
+                    if verbose:
+                        print("writing S_ISLNK", path)
                     if not os.path.islink(target_path):
                         if os.path.exists(target_path):
                             continue
                         os.symlink(inode.data, target_path)
                 elif stat.S_ISREG(inode.mode):
-                    print("writing S_ISREG", path)
-                    if not os.path.isfile(target_path):
+                    # ordering
+                    if verbose:
+                        print("writing S_ISREG", path)
+                    if not os.path.isfile(target_path) or force:
                         if not os.path.isdir(os.path.dirname(target_path)):
                             os.makedirs(os.path.dirname(target_path))
                         with open(target_path, "wb") as fd:
@@ -417,17 +512,22 @@ def dump_fs(fs, target):
                     os.chmod(target_path, stat.S_IMODE(inode.mode))
                     break
                 elif stat.S_ISCHR(inode.mode):
-                    print("writing S_ISBLK", path)
+                    if verbose:
+                        print("writing S_ISBLK", path)
                     os.mknod(target_path, inode.mode, get_device(inode))
                 elif stat.S_ISBLK(inode.mode):
-                    print("writing S_ISBLK", path)
+                    if verbose:
+                        print("writing S_ISBLK", path)
                     os.mknod(target_path, inode.mode, get_device(inode))
                 elif stat.S_ISFIFO(inode.mode):
-                    print("skipping S_ISFIFO", path)
+                    if verbose:
+                        print("skipping S_ISFIFO", path)
                 elif stat.S_ISSOCK(inode.mode):
-                    print("skipping S_ISSOCK", path)
+                    if verbose:
+                        print("skipping S_ISSOCK", path)
                 else:
-                    print("unhandled inode.mode: %o" % inode.mode, inode, dirent)
+                    if verbose:
+                        print("unhandled inode.mode: %o" % inode.mode, inode, dirent)
 
             except OSError as error:
                 print("OS error(%i): %s" % (error.errno, error.strerror), inode, dirent)
@@ -485,7 +585,7 @@ def main():
         if not os.path.exists(dest_path):
             os.mkdir(dest_path)
 
-        dump_fs(fs, dest_path)
+        dump_fs(fs, dest_path, verbose=args.verbose, force=args.force)
         print("-" * 10)
 
 if __name__ == "__main__":
