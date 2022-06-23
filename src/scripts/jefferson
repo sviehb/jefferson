@@ -318,10 +318,9 @@ def scan_fs(content, endianness, verbose=False):
                     inode.unpack(content_mv[0 + offset :])
 
                     if inode.ino in fs[JFFS2_NODETYPE_INODE]:
-                        if inode.version > fs[JFFS2_NODETYPE_INODE][inode.ino].version:
-                            fs[JFFS2_NODETYPE_INODE][inode.ino] = inode
+                        fs[JFFS2_NODETYPE_INODE][inode.ino].append(inode)
                     else:
-                        fs[JFFS2_NODETYPE_INODE][inode.ino] = inode
+                        fs[JFFS2_NODETYPE_INODE][inode.ino] = [inode]
                     if verbose:
                         print("0x%08X:" % (offset), inode)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_CLEANMARKER:
@@ -358,15 +357,17 @@ def get_device(inode):
         return os.makedev((node.old_id >> 8) & 0xFF, node.old_id & 0xFF)
     return None
 
+def sort_version(item):
+    return item.version
 
 def dump_fs(fs, target):
     node_dict = {}
 
     for dirent in fs[JFFS2_NODETYPE_DIRENT].values():
         dirent.inodes = []
-        for inode in fs[JFFS2_NODETYPE_INODE].values():
-            if inode.ino == dirent.ino:
-                dirent.inodes.append(inode)
+        for ino, inodes in fs[JFFS2_NODETYPE_INODE].items():
+            if ino == dirent.ino:
+                dirent.inodes = sorted(inodes, key=sort_version)
         node_dict[dirent.ino] = dirent
 
     for dirent in fs[JFFS2_NODETYPE_DIRENT].values():
