@@ -27,5 +27,5 @@ sudo python3 setup.py install
 ### Usage
 
 ```bash
-$ jefferson filesystem.img -d outdir
+$ jefferson -f -d outdir filesystem.img
 ```
