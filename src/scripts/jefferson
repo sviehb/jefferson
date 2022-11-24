@@ -54,12 +54,9 @@ JFFS2_NODETYPE_XREF = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 9
 def mtd_crc(data):
     return (binascii.crc32(data, -1) ^ -1) & 0xFFFFFFFF
 
-def is_safe_path(basedir, path, follow_symlinks=True):
-    if follow_symlinks:
-        matchpath = os.path.realpath(path)
-    else:
-        matchpath = os.path.abspath(path)
-    return basedir == os.path.commonpath((basedir, matchpath))
+def is_safe_path(basedir, real_path):
+    basedir = os.path.realpath(basedir)
+    return basedir == os.path.commonpath((basedir, real_path))
 
 cstruct.typedef("uint8", "uint8_t")
 cstruct.typedef("uint16", "jint16_t")
@@ -318,10 +315,9 @@ def scan_fs(content, endianness, verbose=False):
                     inode.unpack(content_mv[0 + offset :])
 
                     if inode.ino in fs[JFFS2_NODETYPE_INODE]:
-                        if inode.version > fs[JFFS2_NODETYPE_INODE][inode.ino].version:
-                            fs[JFFS2_NODETYPE_INODE][inode.ino] = inode
+                        fs[JFFS2_NODETYPE_INODE][inode.ino].append(inode)
                     else:
-                        fs[JFFS2_NODETYPE_INODE][inode.ino] = inode
+                        fs[JFFS2_NODETYPE_INODE][inode.ino] = [inode]
                     if verbose:
                         print("0x%08X:" % (offset), inode)
                 elif unknown_node.nodetype == JFFS2_NODETYPE_CLEANMARKER:
@@ -358,15 +354,17 @@ def get_device(inode):
         return os.makedev((node.old_id >> 8) & 0xFF, node.old_id & 0xFF)
     return None
 
+def sort_version(item):
+    return item.version
 
 def dump_fs(fs, target):
     node_dict = {}
 
     for dirent in fs[JFFS2_NODETYPE_DIRENT].values():
         dirent.inodes = []
-        for inode in fs[JFFS2_NODETYPE_INODE].values():
-            if inode.ino == dirent.ino:
-                dirent.inodes.append(inode)
+        for ino, inodes in fs[JFFS2_NODETYPE_INODE].items():
+            if ino == dirent.ino:
+                dirent.inodes = sorted(inodes, key=sort_version)
         node_dict[dirent.ino] = dirent
 
     for dirent in fs[JFFS2_NODETYPE_DIRENT].values():
@@ -387,7 +385,7 @@ def dump_fs(fs, target):
         node_names.append(dirent.name.decode())
         path = "/".join(node_names)
 
-        target_path = os.path.realpath(os.path.join(os.getcwd(), target, path))
+        target_path = os.path.realpath(os.path.join(target, path))
 
         if not is_safe_path(target, target_path):
             print(f"Path traversal attempt to {target_path}, discarding.")
