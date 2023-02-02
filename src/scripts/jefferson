@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 
 import argparse
-import struct
-import stat
+import binascii
+import contextlib
+import mmap
 import os
+import stat
+import struct
 import sys
 import zlib
-import binascii
-import lzo
-import mmap
-import contextlib
+
 import cstruct
+import lzo
 
 from jefferson import jffs2_lzma, rtime
 
@@ -51,12 +52,15 @@ JFFS2_NODETYPE_SUMMARY = JFFS2_FEATURE_RWCOMPAT_DELETE | JFFS2_NODE_ACCURATE | 6
 JFFS2_NODETYPE_XATTR = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 8
 JFFS2_NODETYPE_XREF = JFFS2_FEATURE_INCOMPAT | JFFS2_NODE_ACCURATE | 9
 
+
 def mtd_crc(data):
     return (binascii.crc32(data, -1) ^ -1) & 0xFFFFFFFF
+
 
 def is_safe_path(basedir, real_path):
     basedir = os.path.realpath(basedir)
     return basedir == os.path.commonpath((basedir, real_path))
+
 
 cstruct.typedef("uint8", "uint8_t")
 cstruct.typedef("uint16", "jint16_t")
@@ -183,7 +187,10 @@ class Jffs2_raw_inode(cstruct.CStruct):
                 print(node_data.hex()[:20])
                 self.data = node_data
         except Exception as e:
-            print("Decompression error on inode {}: {}".format(self.ino, e), file=sys.stderr)
+            print(
+                "Decompression error on inode {}: {}".format(self.ino, e),
+                file=sys.stderr,
+            )
             self.data = b"\x00" * self.dsize
 
         if len(self.data) != self.dsize:
@@ -296,15 +303,18 @@ def scan_fs(content, endianness, verbose=False):
         pos += PAD(unknown_node.totlen)
 
         if unknown_node.magic in [
-             JFFS2_MAGIC_BITMASK,
-             JFFS2_OLD_MAGIC_BITMASK,
+            JFFS2_MAGIC_BITMASK,
+            JFFS2_OLD_MAGIC_BITMASK,
         ]:
             if unknown_node.nodetype in NODETYPES:
                 if unknown_node.nodetype == JFFS2_NODETYPE_DIRENT:
                     dirent = Jffs2_raw_dirent()
                     dirent.unpack(content_mv[0 + offset :], offset)
                     if dirent.ino in fs[JFFS2_NODETYPE_DIRENT]:
-                        if dirent.version > fs[JFFS2_NODETYPE_DIRENT][dirent.ino].version:
+                        if (
+                            dirent.version
+                            > fs[JFFS2_NODETYPE_DIRENT][dirent.ino].version
+                        ):
                             fs[JFFS2_NODETYPE_DIRENT][dirent.ino] = dirent
                     else:
                         fs[JFFS2_NODETYPE_DIRENT][dirent.ino] = dirent
@@ -354,8 +364,10 @@ def get_device(inode):
         return os.makedev((node.old_id >> 8) & 0xFF, node.old_id & 0xFF)
     return None
 
+
 def sort_version(item):
     return item.version
+
 
 def dump_fs(fs, target):
     node_dict = {}
@@ -485,6 +497,7 @@ def main():
 
         dump_fs(fs, dest_path)
         print("-" * 10)
+
 
 if __name__ == "__main__":
     main()
