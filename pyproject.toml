@@ -33,7 +33,7 @@ norecursedirs = """
 """
 
 [tool.vulture]
-paths = ["jefferson/"]
+paths = ["jefferson/", "vulture_whitelist.py"]
 exclude = []
 
 [tool.pyright]
