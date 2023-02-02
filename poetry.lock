@@ -1,0 +1,32 @@
+[[package]]
+name = "cstruct"
+version = "5.2"
+description = "C-style structs for Python"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+test = ["pytest"]
+
+[[package]]
+name = "python-lzo"
+version = "1.14"
+description = "Python bindings for the LZO data compression library"
+category = "main"
+optional = false
+python-versions = "*"
+
+[metadata]
+lock-version = "1.1"
+python-versions = "^3.8"
+content-hash = "6180b3b16f8ae983bf7922195011cad7094a6a5648943ea13e05abe6c639ad9e"
+
+[metadata.files]
+cstruct = [
+    {file = "cstruct-5.2-py2.py3-none-any.whl", hash = "sha256:b2f7f0ce9dc5d3c638d544fb31a5dd0b6c155e75a7963d587bfcf872ee067ab2"},
+    {file = "cstruct-5.2.tar.gz", hash = "sha256:88b2f02791926366dabc422c0caa17091373200f2e92140e6ef8225a93cd0e9c"},
+]
+python-lzo = [
+    {file = "python-lzo-1.14.tar.gz", hash = "sha256:83cbd8ecaae284735250e31d6c0ecc18ac08763fab2a8c910dc5a6910db6250c"},
+]
