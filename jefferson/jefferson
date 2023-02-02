@@ -13,7 +13,7 @@ import zlib
 import cstruct
 import lzo
 
-from jefferson import jffs2_lzma, rtime
+from .utils import jffs2_lzma, rtime
 
 
 def PAD(x):
