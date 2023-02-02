@@ -1,4 +1,23 @@
 [[package]]
+name = "click"
+version = "8.1.3"
+description = "Composable command line interface toolkit"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+
+[[package]]
+name = "colorama"
+version = "0.4.6"
+description = "Cross-platform colored terminal text."
+category = "main"
+optional = false
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,>=2.7"
+
+[[package]]
 name = "cstruct"
 version = "5.2"
 description = "C-style structs for Python"
@@ -20,9 +39,17 @@ python-versions = "*"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "6180b3b16f8ae983bf7922195011cad7094a6a5648943ea13e05abe6c639ad9e"
+content-hash = "ad272c68f9033cadbd27dd17ca15bc588264d0c7bf518df30c0b0ee2a7247937"
 
 [metadata.files]
+click = [
+    {file = "click-8.1.3-py3-none-any.whl", hash = "sha256:bb4d8133cb15a609f44e8213d9b391b0809795062913b383c62be0ee95b1db48"},
+    {file = "click-8.1.3.tar.gz", hash = "sha256:7682dc8afb30297001674575ea00d1814d808d6a36af415a82bd481d37ba7b8e"},
+]
+colorama = [
+    {file = "colorama-0.4.6-py2.py3-none-any.whl", hash = "sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6"},
+    {file = "colorama-0.4.6.tar.gz", hash = "sha256:08695f5cb7ed6e0531a20572697297273c47b8cae5a63ffc6d6ed5c201be6e44"},
+]
 cstruct = [
     {file = "cstruct-5.2-py2.py3-none-any.whl", hash = "sha256:b2f7f0ce9dc5d3c638d544fb31a5dd0b6c155e75a7963d587bfcf872ee067ab2"},
     {file = "cstruct-5.2.tar.gz", hash = "sha256:88b2f02791926366dabc422c0caa17091373200f2e92140e6ef8225a93cd0e9c"},
