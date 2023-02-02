@@ -33,7 +33,7 @@ norecursedirs = """
 """
 
 [tool.vulture]
-paths = ["src/"]
+paths = ["jefferson/"]
 exclude = []
 
 [tool.pyright]
