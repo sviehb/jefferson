@@ -1,0 +1,40 @@
+[tool.poetry]
+name = "jefferson"
+version = "0.4.1"
+description = "JFFS2 filesystem extraction tool."
+authors = ["ONEKEY <support@onekey.com>", "Stefan Viehböck <support@onekey.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [
+    { include = "jefferson" },
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+cstruct = "^5.2"
+python-lzo = "^1.14"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+addopts = "--cov=jefferson --cov=tests --cov-branch --cov-fail-under=90"
+norecursedirs = """
+  *.egg
+  *_extract
+  .*
+  dist
+  build
+  target
+"""
+
+[tool.vulture]
+paths = ["src/"]
+exclude = []
+
+[tool.pyright]
+exclude = ["build"]
