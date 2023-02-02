@@ -13,6 +13,7 @@ packages = [
 python = "^3.8"
 cstruct = "^5.2"
 python-lzo = "^1.14"
+click = "^8.1.3"
 
 [build-system]
 requires = ["poetry-core"]
@@ -38,3 +39,6 @@ exclude = []
 
 [tool.pyright]
 exclude = ["build"]
+
+[tool.poetry.scripts]
+jefferson = "jefferson.cli:main"
