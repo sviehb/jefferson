@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "jefferson"
-version = "0.4.1"
+version = "0.4.2"
 description = "JFFS2 filesystem extraction tool."
 authors = ["ONEKEY <support@onekey.com>", "Stefan Viehböck <support@onekey.com>"]
 license = "MIT"
