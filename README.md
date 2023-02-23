@@ -1,3 +1,11 @@
+## This repository has been archived.
+
+Jefferson is now maintained and released from https://github.com/onekey-sec/jefferson/.
+
+This repository should **not** be relied upon to install Jefferson. We recommend you either clone from https://github.com/onekey-sec/jefferson/ or install from pip using `pip install --user jefferson`.
+
+---
+
 ## Jefferson
 
 JFFS2 filesystem extraction tool
