@@ -9,7 +9,7 @@ import zlib
 from pathlib import Path
 
 import cstruct
-import lzo
+import lzokay as lzo
 
 import jefferson.compression.jffs2_lzma as jffs2_lzma
 import jefferson.compression.rtime as rtime
@@ -180,7 +180,7 @@ class Jffs2_raw_inode(cstruct.CStruct):
             elif self.compr == JFFS2_COMPR_LZMA:
                 self.data = jffs2_lzma.decompress(node_data, self.dsize)
             elif self.compr == JFFS2_COMPR_LZO:
-                self.data = lzo.decompress(node_data, False, self.dsize)
+                self.data = lzo.decompress(node_data, self.dsize)
             else:
                 print("compression not implemented", self)
                 print(node_data.hex()[:20])
