@@ -1,20 +1,20 @@
 ## Jefferson
 
-JFFS2 filesystem extraction tool
+JFFS2 filesystem extraction tool.
 
 ### Installation
 
-Follow these steps on Debian based systems (Debian, Ubuntu, Kali, ...) to perform a system-wide installation of jefferon:
+You can install Jefferson from PyPi with the following command:
 
-```bash
-git clone https://github.com/sviehb/jefferson.git
-cd jefferson
-sudo apt update
-sudo apt install python3-pip liblzo2-dev
-sudo python3 -m pip install -r requirements.txt
-sudo python3 setup.py install
+```
+pip install --user jefferson
 ```
 
+### Usage
+
+```sh
+jefferson filesystem.img -d outdir
+```
 
 ### Features
 
@@ -24,8 +24,15 @@ sudo python3 setup.py install
 - extraction of symlinks, directories, files, and device nodes
 - detection/handling of duplicate inode numbers. Occurs if multiple JFFS2 filesystems are found in one file and causes `jefferson` to treat segments as separate filesystems
 
-### Usage
+### Development
 
-```bash
-$ jefferson filesystem.img -d outdir
+The package is maintained with Poetry. If you want to contribute, we recommend you follow these steps:
+
+```sh
+git clone https://github.com/onekey-sec/jefferson.git
+cd jefferson
+poetry install
+poetry run jefferson
 ```
+
+You can install Poetry by following this [guide](https://python-poetry.org/dos/#installation)
